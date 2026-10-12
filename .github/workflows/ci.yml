@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      RUSTFLAGS: -D warnings
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt --all --check
+      - name: Clippy (all crates, including bindings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Test (kernel, verifier policy)
+        run: cargo test
+
+  c-api:
+    name: C header and example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cbindgen
+        run: cargo install cbindgen --locked --version 0.29.4
+      - name: Header is up to date
+        run: >
+          cbindgen --verify --config crates/gensolid-ffi/cbindgen.toml --crate gensolid-ffi
+          --output crates/gensolid-ffi/include/gensolid.h crates/gensolid-ffi
+      - name: Build and run the C example
+        run: |
+          cargo build -p gensolid-ffi
+          cc -std=c99 -Wall -Wextra -Werror -I crates/gensolid-ffi/include \
+            crates/gensolid-ffi/examples/block.c -L target/debug -lgensolid -o block
+          LD_LIBRARY_PATH=target/debug ./block
+
+  wasm:
+    name: WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p gensolid-wasm --target wasm32-unknown-unknown --release
+
+  python:
+    name: Python wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build, install and smoke-test
+        run: |
+          python -m pip install "maturin>=1.9,<2"
+          maturin build --release -m bindings/python/Cargo.toml -o dist
+          python -m pip install dist/*.whl
+          python -c "import gensolid as g; s = g.Session(); b = s.body_create_solid_block(1.0, 2.0, 3.0); assert len(s.body_ask_faces(b)) == 6; assert s.body_check(b) == []"
+
+  licenses:
+    name: Dependency licenses and sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses bans sources

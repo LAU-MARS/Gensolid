@@ -1,0 +1,18 @@
+[package]
+name = "gensolid-api"
+description = "PK-style session and tag API of the Gensolid kernel; the layer every binding wraps."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+gensolid-core.workspace = true
+gensolid-math.workspace = true
+gensolid-topo.workspace = true
+gensolid-check.workspace = true
+
+[lints]
+workspace = true

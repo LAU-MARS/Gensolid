@@ -1,0 +1,17 @@
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Python bindings
+__pycache__/
+*.pyd
+*.so
+.venv/
+dist/
+bindings/python/target/
+
+# WASM bindings
+bindings/wasm/pkg/
+
+# Private verifier assets never live in this repository
+verifier/private/

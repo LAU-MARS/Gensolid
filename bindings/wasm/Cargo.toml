@@ -1,0 +1,20 @@
+[package]
+name = "gensolid-wasm"
+description = "WebAssembly bindings of the Gensolid kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+gensolid-api.workspace = true
+wasm-bindgen.workspace = true
+
+[lints]
+workspace = true

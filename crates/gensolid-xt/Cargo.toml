@@ -1,0 +1,15 @@
+[package]
+name = "gensolid-xt"
+description = "Parasolid XT transmit format reading and writing for the Gensolid kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+gensolid-core.workspace = true
+
+[lints]
+workspace = true

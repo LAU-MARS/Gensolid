@@ -1,0 +1,13 @@
+# Human-owned ground truth (verifier layer L0). Coding agents may read these paths but
+# changes need review from the owners. Enable "Require review from Code Owners" in the
+# branch protection rules of `main` for this to take effect.
+
+/verifier/                              @LAU-MARS
+/crates/gensolid-check/                 @LAU-MARS
+/crates/gensolid-core/src/tolerance.rs  @LAU-MARS
+/AGENTS.md                              @LAU-MARS
+/.github/                               @LAU-MARS
+/Cargo.toml                             @LAU-MARS
+/clippy.toml                            @LAU-MARS
+/deny.toml                              @LAU-MARS
+/docs/adr/                              @LAU-MARS

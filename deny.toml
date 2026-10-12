@@ -1,0 +1,35 @@
+# Dependency policy, checked in CI with cargo-deny.
+#
+# Gensolid is Apache-2.0. Only permissive licenses may enter the dependency graph, so
+# copyleft code (including OCCT, LGPL-2.1) can never be linked into the kernel. OCCT is
+# used by the verifier out of process only.
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+]
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = [
+    { name = "opencascade", reason = "OCCT is LGPL; use it only out of process in the verifier" },
+    { name = "opencascade-sys", reason = "OCCT is LGPL; use it only out of process in the verifier" },
+    { name = "occt-sys", reason = "OCCT is LGPL; use it only out of process in the verifier" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

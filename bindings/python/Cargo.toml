@@ -1,0 +1,21 @@
+[package]
+name = "gensolid-py"
+description = "Python bindings of the Gensolid kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+name = "gensolid"
+crate-type = ["cdylib"]
+
+[dependencies]
+gensolid-api.workspace = true
+pyo3 = { workspace = true, features = ["abi3-py39"] }
+
+[lints]
+workspace = true

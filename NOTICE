@@ -1,0 +1,13 @@
+Gensolid
+Copyright 2026 The Gensolid Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Parasolid is a trademark of Siemens Digital Industries Software. Gensolid is not
+affiliated with or endorsed by Siemens.
+
+Third-party code included in this distribution
+----------------------------------------------
+None yet. When code derived from another Apache-2.0 project (for example truck,
+https://github.com/ricosjp/truck) is added, that project's copyright notice and
+NOTICE text are reproduced here.

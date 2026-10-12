@@ -1,0 +1,64 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/gensolid-core",
+    "crates/gensolid-math",
+    "crates/gensolid-geom",
+    "crates/gensolid-topo",
+    "crates/gensolid-check",
+    "crates/gensolid-xt",
+    "crates/gensolid-api",
+    "crates/gensolid-ffi",
+    "bindings/python",
+    "bindings/wasm",
+    "verifier/policy",
+]
+# Bindings need extra toolchains (Python, wasm32) and are built by dedicated CI jobs.
+default-members = [
+    "crates/gensolid-core",
+    "crates/gensolid-math",
+    "crates/gensolid-geom",
+    "crates/gensolid-topo",
+    "crates/gensolid-check",
+    "crates/gensolid-xt",
+    "crates/gensolid-api",
+    "crates/gensolid-ffi",
+    "verifier/policy",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/LAU-MARS/Gensolid"
+authors = ["Gensolid contributors"]
+
+[workspace.dependencies]
+gensolid-core = { path = "crates/gensolid-core", version = "0.1.0" }
+gensolid-math = { path = "crates/gensolid-math", version = "0.1.0" }
+gensolid-geom = { path = "crates/gensolid-geom", version = "0.1.0" }
+gensolid-topo = { path = "crates/gensolid-topo", version = "0.1.0" }
+gensolid-check = { path = "crates/gensolid-check", version = "0.1.0" }
+gensolid-xt = { path = "crates/gensolid-xt", version = "0.1.0" }
+gensolid-api = { path = "crates/gensolid-api", version = "0.1.0" }
+robust = "1.1"
+proptest = "1.12"
+pyo3 = "0.29"
+wasm-bindgen = "0.2"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+float_cmp = "warn"
+
+[profile.release]
+debug = "line-tables-only"

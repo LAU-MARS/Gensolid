@@ -1,0 +1,19 @@
+[package]
+name = "gensolid-math"
+description = "Vectors, frames, interval arithmetic and exact predicates for the Gensolid kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+gensolid-core.workspace = true
+robust.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

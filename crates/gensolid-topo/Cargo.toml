@@ -1,0 +1,17 @@
+[package]
+name = "gensolid-topo"
+description = "Non-manifold boundary-representation topology for the Gensolid kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+gensolid-core.workspace = true
+gensolid-math.workspace = true
+gensolid-geom.workspace = true
+
+[lints]
+workspace = true
