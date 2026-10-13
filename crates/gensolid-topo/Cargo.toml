@@ -13,5 +13,9 @@ gensolid-core.workspace = true
 gensolid-math.workspace = true
 gensolid-geom.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+gensolid-check.workspace = true
+
 [lints]
 workspace = true

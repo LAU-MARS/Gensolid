@@ -4,14 +4,14 @@
 
 对标 Parasolid 的开源 B-rep 几何建模内核。代码主要由 RSI（递归自我改进）驱动的大模型生成，正确性由人类掌控的验证器裁决。
 
-> 状态：**pre-alpha，M0（验证基础设施）阶段**。API 会变，不要用于生产。
+> 状态：**pre-alpha，已建立 M0 公开开发基准，M1 开发目录 1088/1088，M2 基础建模已启动**。一般曲面求交尚未完整实现；具体证据与范围见 [M0/M1 与 M2 起步状态](docs/m0-m1-status.md)。API 会变，不要用于生产。
 
 ## 设计要点
 
 - **Rust 内核**：编译器是大模型代码的第一道免费验证器；内核 crate 禁用 `unsafe`、`unwrap`、`panic`。
 - **仿 PK 风格的 C 接口**：整数 tag、`GS_<CLASS>_<verb>` 命名、带 `o_t_version` 的选项结构体；Python 和 WASM 绑定与之共享同一层语义（`gensolid-api`）。
 - **从第一天按 Parasolid 数据模型设计**：
-  - 解析曲面、NURBS、过程曲面并存，XT 可无损往返；
+  - 解析曲面、NURBS、过程曲面并存，已支持的 XT 导入保留几何；
   - 拓扑 body / region / shell / face / loop / fin / edge / vertex，支持非流形；
   - 每条边、每个顶点可带局部容差（容差建模）；
   - 拓扑判定走精确谓词和区间算术。
@@ -24,14 +24,19 @@
 |---|---|
 | `gensolid-core` | 带代际的类型化 ID 竞技场、错误码、会话精度与局部容差 |
 | `gensolid-math` | 点/向量/坐标系、外向舍入区间算术、精确 `orient2d` / `orient3d` |
-| `gensolid-geom` | 直线、圆、椭圆、B 样条曲线；平面、圆柱、圆锥、球、环面、B 样条曲面；拉伸面、旋转面；求值、求导、点到曲线/曲面距离 |
-| `gensolid-topo` | 非流形拓扑模型、长方体基本体 |
+| `gensolid-geom` | 解析与 NURBS 求值求导、投影、支持配对的解析求交、一/二/三次有理曲线与平面求交、双线性曲面与平面求交 |
+| `gensolid-topo` | 非流形拓扑、凸多面体、多边形拉伸、直线扫掠、相似截面放样、直边分裂 |
+| `gensolid-modeling` | 经检查器验证的建模入口；平面 B-rep 的体积、面积、质心、惯量，包含孔和空腔 |
+| `gensolid-mesh` | 输出网格：平面面片和具有弦高上界的解析曲面参数区域 |
 | `gensolid-check` | 有效性检查（拓扑一致性、环闭合、流形边、点线面在容差内） |
-| `gensolid-xt` | XT 文本头读写、节点流分词（**仅用合成样例测试过，需用真实 XT 文件验证**） |
+| `gensolid-xt` | 按 schema 读取文本/中性二进制并给出报告；已支持三个真实 ABC XT 件的精确嵌入 schema；明确报告不支持的 schema 与几何 |
+| `gensolid-step` | Part21 流形实体导入，解析/NURBS 几何、经认证的凸平面空腔与逐体检查；平面 AP203 写出 |
+| `gensolid-cli` | JSON 文件诊断、公开开发基准、OCCT 一致率与覆盖率、ABC 配套格式读取核对、仅接收汇总分数的私有接口 |
 | `gensolid-api` | PK 风格会话与 tag API |
 | `gensolid-ffi` | C ABI 与头文件 `crates/gensolid-ffi/include/gensolid.h` |
 | `bindings/python`、`bindings/wasm` | Python（PyO3）与 WebAssembly 绑定 |
 | `verifier/policy` | 仓库规则测试（禁止字面量容差、B-rep 不得依赖网格、`unsafe` 仅限 FFI 等） |
+| `verifier/oracle` | 公开长方体语料与 OCCT 进程外对拍；安装 pythonocc 后才会真正比较 |
 
 ## 构建
 
@@ -51,9 +56,20 @@ import gensolid
 s = gensolid.Session()
 body = s.body_create_solid_block(1.0, 2.0, 3.0)
 assert len(s.body_ask_faces(body)) == 6 and s.body_check(body) == []
+assert s.body_ask_volume(body) == 6.0
 ```
 
 C：见 `crates/gensolid-ffi/examples/block.c`。
+
+公开开发基准：
+
+```sh
+python tools/fetch-abc-smoke.py
+cargo run -p gensolid-cli -- check corpus/abc-smoke
+cargo run -p gensolid-cli -- benchmark --output target/m0-m1-m2-report.json
+```
+
+ABC 示例来自一个官方公开模型。默认基准还包含独立 OCCT 实体与负例；冻结 manifest 保留缺失或被改动输入的诊断。报告将未实现配对计入求交总数，同时输出 OCCT 对比覆盖率与一致率；`benchmark` 成功退出表示报告已生成且输入完整性检查通过，覆盖情况以报告字段为准。预留的 `--private-score <receipt.json>` 只接收 `suite_id`、`total`、`passed`，私有案例留在独立评分服务。
 
 ## 路线图
 
@@ -98,6 +114,8 @@ Rust B-rep 内核，Gensolid NURBS 实现的参考。truck 与 Gensolid 许可�
 ### 依赖库
 
 - [robust](https://github.com/georust/robust)（MIT / Apache-2.0）：Shewchuk 精确谓词的 Rust 实现。
+- [parasolid-core](https://github.com/monozukuri-ai/parasolid-kit)（MIT 和 Apache-2.0），锁定 0.3.7：XT 节点/schema 解码；拓扑和几何映射由 Gensolid 独立实现。
+- [sha2](https://github.com/RustCrypto/hashes)（MIT / Apache-2.0）：CLI 冻结开发语料的完整性检查。
 - [PyO3](https://github.com/PyO3/pyo3)、[wasm-bindgen](https://github.com/rustwasm/wasm-bindgen)、[cbindgen](https://github.com/mozilla/cbindgen)、[proptest](https://github.com/proptest-rs/proptest)。
 
 ### 许可与商标

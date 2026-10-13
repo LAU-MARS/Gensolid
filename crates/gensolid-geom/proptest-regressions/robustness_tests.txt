@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4d4dfdfd3b381e4120b97cb3bf3a7e63cb747ce8a6d84f1e8fd5fdf5e88c21ff # shrinks to frame = Frame { origin: Point3 { x: 0.0, y: 0.0, z: 64.9637419310049 }, x: Vec3 { x: 0.9090352578478613, y: 0.26500003036352304, z: 0.3216051677084872 }, y: Vec3 { x: 0.0, y: 0.771755081083294, z: -0.6359198808199963 }, z: Vec3 { x: -0.4167192100077368, y: 0.5780735928317866, z: 0.7015525791279493 } }, log_scale = 0.5091060676002144, u = 0.450265998107614, v = 0.29348895964931504, weights = [2.7168307283709914, 4.3958324266950415, 4.18483026277796, 1.210329732947822], offset_factor = 0.46504765859461444

@@ -43,20 +43,20 @@ impl Frame {
                 "frame reference direction has zero length",
             ));
         }
-        let x_raw = ref_direction - z * ref_direction.dot(z);
-        let x_length = x_raw.length();
-        if x_length <= precision.angular() * ref_length {
+        // Cross products avoid cancellation in `ref - z * dot(ref, z)`, whose
+        // rounded residual can retain a measurable component along the axis.
+        let y_raw = z.cross(ref_direction);
+        let y_length = y_raw.length();
+        if y_length <= precision.angular() * ref_length {
             return Err(Error::degenerate(
                 "frame reference direction is parallel to the axis",
             ));
         }
-        let x = x_raw / x_length;
-        Ok(Self {
-            origin,
-            x,
-            y: z.cross(x),
-            z,
-        })
+        let y = y_raw / y_length;
+        let x = y.cross(z).normalized(precision.angular()).ok_or_else(|| {
+            Error::degenerate("frame reference direction cannot be orthogonalized")
+        })?;
+        Ok(Self { origin, x, y, z })
     }
 
     /// Builds a frame with the given axis and an arbitrary perpendicular reference direction.

@@ -1,0 +1,53 @@
+{
+  "description": "Solid blocks. Volume is x*y*z. Topology counts are the closed box. The OCCT oracle, when installed, must agree on counts, volume and the axis-aligned bounding box.",
+  "cases": [
+    {
+      "name": "unit",
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0,
+      "location": [0.0, 0.0, 0.0],
+      "axis": [0.0, 0.0, 1.0],
+      "ref_direction": [1.0, 0.0, 0.0],
+      "faces": 6,
+      "edges": 12,
+      "vertices": 8
+    },
+    {
+      "name": "origin-2x3x4",
+      "x": 2.0,
+      "y": 3.0,
+      "z": 4.0,
+      "location": [0.0, 0.0, 0.0],
+      "axis": [0.0, 0.0, 1.0],
+      "ref_direction": [1.0, 0.0, 0.0],
+      "faces": 6,
+      "edges": 12,
+      "vertices": 8
+    },
+    {
+      "name": "translated",
+      "x": 2.0,
+      "y": 2.0,
+      "z": 2.0,
+      "location": [10.0, -4.0, 1.0],
+      "axis": [0.0, 0.0, 1.0],
+      "ref_direction": [1.0, 0.0, 0.0],
+      "faces": 6,
+      "edges": 12,
+      "vertices": 8
+    },
+    {
+      "name": "rotated",
+      "x": 1.5,
+      "y": 2.5,
+      "z": 3.5,
+      "location": [1.0, 2.0, 3.0],
+      "axis": [1.0, 1.0, 0.0],
+      "ref_direction": [0.0, 0.0, 1.0],
+      "faces": 6,
+      "edges": 12,
+      "vertices": 8
+    }
+  ]
+}

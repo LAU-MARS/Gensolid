@@ -13,7 +13,17 @@ pub type CurveId = Id<Curve>;
 /// Handle to a surface in a [`GeomStore`].
 pub type SurfaceId = Id<Surface>;
 
-/// Closest point on a curve.
+/// What a projection result establishes about the minimum.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProjectionKind {
+    /// A closed-form global minimum on the untrimmed geometry.
+    Analytic,
+    /// A converged stationary or domain-boundary candidate from a bounded search.
+    /// Other minima may exist between the search seeds.
+    NumericalCandidate,
+}
+
+/// Point projection on a curve; see [`CurveProjection::kind`] for its guarantee.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CurveProjection {
     /// Curve parameter of the closest point.
@@ -22,6 +32,23 @@ pub struct CurveProjection {
     pub point: Point3,
     /// Distance from the query point.
     pub distance: f64,
+    /// Whether the solution is analytic or a numerical candidate.
+    pub kind: ProjectionKind,
+}
+
+/// Point projection on an untrimmed surface.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SurfaceProjection {
+    /// First surface parameter.
+    pub u: f64,
+    /// Second surface parameter.
+    pub v: f64,
+    /// Surface point at `(u, v)`.
+    pub point: Point3,
+    /// Distance from the query point.
+    pub distance: f64,
+    /// Whether the solution is analytic or a numerical candidate.
+    pub kind: ProjectionKind,
 }
 
 /// Owns all curves and surfaces of a model.
@@ -103,12 +130,22 @@ impl GeomStore {
 
     /// Point and derivative of a curve at `t`.
     pub fn eval_curve(&self, id: CurveId, t: f64) -> Result<CurveDerivs> {
-        Ok(self.curve(id)?.eval(t))
+        if !t.is_finite() {
+            return Err(Error::invalid_argument("curve parameter must be finite"));
+        }
+        let value = self.curve(id)?.eval(t);
+        if !(value.point.is_finite() && value.d1.is_finite()) {
+            return Err(Error::degenerate("curve evaluation is not finite"));
+        }
+        Ok(value)
     }
 
     /// Point and partial derivatives of a surface at `(u, v)`.
     pub fn eval_surface(&self, id: SurfaceId, u: f64, v: f64) -> Result<SurfaceDerivs> {
-        Ok(match self.surface(id)? {
+        if !(u.is_finite() && v.is_finite()) {
+            return Err(Error::invalid_argument("surface parameters must be finite"));
+        }
+        let value = match self.surface(id)? {
             Surface::Plane(s) => s.eval(u, v),
             Surface::Cylinder(s) => s.eval(u, v),
             Surface::Cone(s) => s.eval(u, v),
@@ -132,53 +169,116 @@ impl GeomStore {
                     dv: s.axis_direction.cross(rel),
                 }
             }
-        })
+        };
+        if !(value.point.is_finite() && value.du.is_finite() && value.dv.is_finite()) {
+            return Err(Error::degenerate("surface evaluation is not finite"));
+        }
+        Ok(value)
     }
 
     /// Closest point on a curve to `p`.
     ///
-    /// Exact for lines and circles. Other curves use sampling plus Gauss-Newton refinement,
-    /// which finds the global minimum when the sampling resolves the curve's features.
+    /// Exact for lines and circles. Other curves return a converged numerical candidate,
+    /// with no certificate that every local minimum was found. Numerical failure is an
+    /// error, never an unconverged sampled point.
     pub fn project_to_curve(
         &self,
         id: CurveId,
         p: Point3,
         precision: &Precision,
     ) -> Result<CurveProjection> {
+        if !p.is_finite() {
+            return Err(Error::invalid_argument("projection point must be finite"));
+        }
         let curve = self.curve(id)?;
         let exact = |param: f64| {
-            let point = curve.eval(param).point;
-            CurveProjection {
+            let point = self.eval_curve(id, param)?.point;
+            let result = CurveProjection {
                 param,
                 point,
                 distance: point.distance(p),
+                kind: ProjectionKind::Analytic,
+            };
+            if !result.distance.is_finite() {
+                return Err(Error::degenerate("projection distance is not finite"));
             }
+            Ok(result)
         };
         match curve {
-            Curve::Line(c) => Ok(exact(c.closest_param(p))),
-            Curve::Circle(c) => Ok(exact(c.closest_param(p))),
+            Curve::Line(c) => exact(c.closest_param(p)),
+            Curve::Circle(c) => exact(c.closest_param(p)),
+            Curve::BCurve(c) => {
+                project::closest_on_spline(|t| c.eval(t), c.range(), c.knots(), p, precision)
+            }
             _ => project::closest_on_curve(|t| curve.eval(t), curve.range(), p, precision),
         }
     }
 
     /// Distance from `p` to a surface (ignoring any face boundary).
     ///
-    /// Closed form for analytic surfaces; numerical for NURBS and procedural surfaces,
-    /// with the same caveat as [`GeomStore::project_to_curve`].
+    /// This is the distance of [`GeomStore::project_to_surface`]'s result, with the same
+    /// numerical-candidate limitation for NURBS and procedural surfaces.
     pub fn distance_to_surface(
         &self,
         id: SurfaceId,
         p: Point3,
         precision: &Precision,
     ) -> Result<f64> {
+        if !p.is_finite() {
+            return Err(Error::invalid_argument("projection point must be finite"));
+        }
+        if let Some(distance) = self.surface(id)?.analytic_distance(p) {
+            return if distance.is_finite() {
+                Ok(distance)
+            } else {
+                Err(Error::degenerate("projection distance is not finite"))
+            };
+        }
+        Ok(self.project_to_surface(id, p, precision)?.distance)
+    }
+
+    /// Projects `p` onto an untrimmed surface and returns both parameters and its point.
+    ///
+    /// Analytic surfaces have closed-form global solutions. NURBS and procedural
+    /// surfaces use a bounded numerical search and report `NumericalCandidate`; their
+    /// result is not a global minimum certificate. Nonconvergence returns an error.
+    pub fn project_to_surface(
+        &self,
+        id: SurfaceId,
+        p: Point3,
+        precision: &Precision,
+    ) -> Result<SurfaceProjection> {
+        if !p.is_finite() {
+            return Err(Error::invalid_argument("projection point must be finite"));
+        }
         let surface = self.surface(id)?;
-        if let Some(d) = surface.analytic_distance(p) {
-            return Ok(d);
+        let result = |u: f64, v: f64, kind: ProjectionKind| {
+            let point = self.eval_surface(id, u, v)?.point;
+            let distance = point.distance(p);
+            if !distance.is_finite() {
+                return Err(Error::degenerate("projection distance is not finite"));
+            }
+            Ok(SurfaceProjection {
+                u,
+                v,
+                point,
+                distance,
+                kind,
+            })
+        };
+        if let Some((u, v)) = surface.analytic_projection(p) {
+            return result(u, v, ProjectionKind::Analytic);
         }
         match surface {
             Surface::BSurface(s) => {
                 let (ur, vr) = s.ranges();
-                project::distance_to_patch(|u, v| s.eval(u, v), ur, vr, p, precision)
+                project::closest_on_spline_patch(
+                    |u, v| s.eval(u, v),
+                    (ur, vr),
+                    s.knots(),
+                    p,
+                    precision,
+                )
             }
             Surface::Swept(s) => {
                 // For fixed u the optimal v is exact, so only the profile projected onto
@@ -195,7 +295,33 @@ impl GeomStore {
                         d1: flatten(c.d1),
                     }
                 };
-                Ok(project::closest_on_curve(flat, range, target, precision)?.distance)
+                let projection = match curve {
+                    Curve::Line(line) => {
+                        let tangent = flatten(line.direction());
+                        let speed = tangent.length();
+                        if speed <= precision.angular() {
+                            return Err(Error::degenerate(
+                                "sweep profile is parallel to its direction",
+                            ));
+                        }
+                        let u = (p - line.origin()).dot(tangent) / tangent.length_squared();
+                        return result(
+                            u,
+                            (p - curve.eval(u).point).dot(d),
+                            ProjectionKind::Analytic,
+                        );
+                    }
+                    Curve::BCurve(c) => {
+                        project::closest_on_spline(flat, range, c.knots(), target, precision)?
+                    }
+                    _ => project::closest_on_curve(flat, range, target, precision)?,
+                };
+                let u = projection.param;
+                result(
+                    u,
+                    (p - curve.eval(u).point).dot(d),
+                    ProjectionKind::NumericalCandidate,
+                )
             }
             Surface::Spun(s) => {
                 // Rotation sweeps each profile point over a full circle, so the distance
@@ -226,7 +352,20 @@ impl GeomStore {
                         d1: Vec3::new(d_rho, d1_axial, 0.0),
                     }
                 };
-                Ok(project::closest_on_curve(planar, range, target, precision)?.distance)
+                let projection = match curve {
+                    Curve::BCurve(c) => {
+                        project::closest_on_spline(planar, range, c.knots(), target, precision)?
+                    }
+                    _ => project::closest_on_curve(planar, range, target, precision)?,
+                };
+                let u = projection.param;
+                let (profile_radial, _) = half_plane(curve.eval(u).point);
+                // At an axis point every angle is equivalent; atan2(0, 0) chooses zero.
+                let v = k
+                    .dot(profile_radial.cross(radial))
+                    .atan2(profile_radial.dot(radial))
+                    .rem_euclid(std::f64::consts::TAU);
+                result(u, v, ProjectionKind::NumericalCandidate)
             }
             _ => Err(Error::internal("surface without distance evaluation")),
         }

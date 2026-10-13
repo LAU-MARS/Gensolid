@@ -393,6 +393,39 @@ pub unsafe extern "C" fn GS_BODY_check(
     })
 }
 
+/// Volume of the solid regions of a body.
+///
+/// # Safety
+/// `volume` must be valid for writes of one double.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn GS_BODY_ask_volume(body: GS_BODY_t, volume: *mut f64) -> GS_ERROR_code_t {
+    guard(|| {
+        let value = with_session(|s| s.body_ask_volume(body))?;
+        // SAFETY: forwarded caller contract.
+        unsafe { write_out(volume, value) }
+    })
+}
+
+/// Axis-aligned bounding box of a body.
+///
+/// # Safety
+/// `min_corner` and `max_corner` must be valid for writes of three doubles each.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn GS_BODY_ask_bounding_box(
+    body: GS_BODY_t,
+    min_corner: *mut [f64; 3],
+    max_corner: *mut [f64; 3],
+) -> GS_ERROR_code_t {
+    guard(|| {
+        let (min, max) = with_session(|s| s.body_ask_bounding_box(body))?;
+        // SAFETY: forwarded caller contract.
+        unsafe {
+            write_out(min_corner, min)?;
+            write_out(max_corner, max)
+        }
+    })
+}
+
 /// Position of a vertex, written to `point[0..3]`.
 ///
 /// # Safety
@@ -533,6 +566,16 @@ mod tests {
                 GS_ERROR_no_errors
             );
             assert_eq!(point, [-0.5, -1.0, -1.5]);
+            let mut volume = 0.0;
+            assert_eq!(GS_BODY_ask_volume(body, &mut volume), GS_ERROR_no_errors);
+            assert_eq!(volume, 6.0);
+            let (mut min_corner, mut max_corner) = ([0.0; 3], [0.0; 3]);
+            assert_eq!(
+                GS_BODY_ask_bounding_box(body, &mut min_corner, &mut max_corner),
+                GS_ERROR_no_errors
+            );
+            assert_eq!(min_corner, [-0.5, -1.0, -1.5]);
+            assert_eq!(max_corner, [0.5, 1.0, 1.5]);
             GS_MEMORY_free(vertices.cast());
 
             assert_eq!(

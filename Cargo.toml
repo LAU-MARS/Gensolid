@@ -7,11 +7,16 @@ members = [
     "crates/gensolid-topo",
     "crates/gensolid-check",
     "crates/gensolid-xt",
+    "crates/gensolid-step",
     "crates/gensolid-api",
     "crates/gensolid-ffi",
+    "crates/gensolid-cli",
+    "crates/gensolid-modeling",
+    "crates/gensolid-mesh",
     "bindings/python",
     "bindings/wasm",
     "verifier/policy",
+    "verifier/oracle",
 ]
 # Bindings need extra toolchains (Python, wasm32) and are built by dedicated CI jobs.
 default-members = [
@@ -21,9 +26,14 @@ default-members = [
     "crates/gensolid-topo",
     "crates/gensolid-check",
     "crates/gensolid-xt",
+    "crates/gensolid-step",
     "crates/gensolid-api",
     "crates/gensolid-ffi",
+    "crates/gensolid-cli",
+    "crates/gensolid-modeling",
+    "crates/gensolid-mesh",
     "verifier/policy",
+    "verifier/oracle",
 ]
 
 [workspace.package]
@@ -41,11 +51,16 @@ gensolid-geom = { path = "crates/gensolid-geom", version = "0.1.0" }
 gensolid-topo = { path = "crates/gensolid-topo", version = "0.1.0" }
 gensolid-check = { path = "crates/gensolid-check", version = "0.1.0" }
 gensolid-xt = { path = "crates/gensolid-xt", version = "0.1.0" }
+gensolid-step = { path = "crates/gensolid-step", version = "0.1.0" }
 gensolid-api = { path = "crates/gensolid-api", version = "0.1.0" }
+gensolid-modeling = { path = "crates/gensolid-modeling", version = "0.1.0" }
+gensolid-mesh = { path = "crates/gensolid-mesh", version = "0.1.0" }
 robust = "1.1"
 proptest = "1.12"
 pyo3 = "0.29"
 wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use gensolid_core::{Arena, Error, Id, Precision, Result};
+use gensolid_core::{Arena, Error, ErrorCode, Id, Precision, Result};
 use gensolid_geom::GeomStore;
 
 use crate::entity::*;
@@ -20,6 +20,20 @@ pub struct Model {
     fins: Arena<Fin>,
     edges: Arena<Edge>,
     vertices: Arena<Vertex>,
+}
+
+#[derive(Default)]
+pub(crate) struct Capacity {
+    pub(crate) bodies: usize,
+    pub(crate) regions: usize,
+    pub(crate) shells: usize,
+    pub(crate) faces: usize,
+    pub(crate) loops: usize,
+    pub(crate) fins: usize,
+    pub(crate) edges: usize,
+    pub(crate) vertices: usize,
+    pub(crate) curves: usize,
+    pub(crate) surfaces: usize,
 }
 
 fn lookup<'a, T>(arena: &'a Arena<T>, id: Id<T>, what: &str) -> Result<&'a T> {
@@ -41,6 +55,41 @@ fn push_unique<T: Copy + Eq + Hash>(seen: &mut HashSet<T>, out: &mut Vec<T>, ite
 }
 
 impl Model {
+    pub(crate) fn ensure_capacity(&self, needed: &Capacity) -> Result<()> {
+        // These append-only editors never remove arena slots. Validate every arena
+        // before the first mutation so a capacity error cannot publish a partial body.
+        for (current, added) in [
+            (self.bodies.len(), needed.bodies),
+            (self.regions.len(), needed.regions),
+            (self.shells.len(), needed.shells),
+            (self.faces.len(), needed.faces),
+            (self.loops.len(), needed.loops),
+            (self.fins.len(), needed.fins),
+            (self.edges.len(), needed.edges),
+            (self.vertices.len(), needed.vertices),
+            (self.geom.curve_count(), needed.curves),
+            (self.geom.surface_count(), needed.surfaces),
+        ] {
+            if !current
+                .checked_add(added)
+                .is_some_and(|count| count as u128 <= u128::from(u32::MAX) + 1)
+            {
+                return Err(Error::new(
+                    ErrorCode::CapacityExceeded,
+                    "modelling operation exceeds an arena's identifier capacity",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn wire_shells(&self, edge: EdgeId) -> Vec<ShellId> {
+        self.shells
+            .iter()
+            .filter(|(_, shell)| shell.wire_edges.contains(&edge))
+            .map(|(id, _)| id)
+            .collect()
+    }
     /// Creates an empty model.
     pub fn new(precision: Precision) -> Self {
         Self {

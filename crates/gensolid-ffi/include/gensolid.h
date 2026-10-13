@@ -200,6 +200,20 @@ GS_ERROR_code_t GS_BODY_ask_vertices(GS_BODY_t body, int32_t *n_vertices, GS_VER
 // The output pointers must be valid for writes. Free `*faults` with `GS_MEMORY_free`.
 GS_ERROR_code_t GS_BODY_check(GS_BODY_t body, int32_t *n_faults, GS_check_fault_t **faults);
 
+// Volume of the solid regions of a body.
+//
+// # Safety
+// `volume` must be valid for writes of one double.
+GS_ERROR_code_t GS_BODY_ask_volume(GS_BODY_t body, double *volume);
+
+// Axis-aligned bounding box of a body.
+//
+// # Safety
+// `min_corner` and `max_corner` must be valid for writes of three doubles each.
+GS_ERROR_code_t GS_BODY_ask_bounding_box(GS_BODY_t body,
+                                         double (*min_corner)[3],
+                                         double (*max_corner)[3]);
+
 // Position of a vertex, written to `point[0..3]`.
 //
 // # Safety

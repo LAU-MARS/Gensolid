@@ -1,0 +1,22 @@
+[package]
+name = "gensolid-step"
+description = "STEP AP203/AP214/AP242 analytic and NURBS manifold-solid reader."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+gensolid-core.workspace = true
+gensolid-math.workspace = true
+gensolid-geom.workspace = true
+gensolid-topo.workspace = true
+gensolid-check.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

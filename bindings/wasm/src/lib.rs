@@ -81,6 +81,19 @@ impl Session {
         Ok(self.inner.body_check(body).map_err(to_js)?.len())
     }
 
+    /// Volume of the solid regions of a body.
+    #[wasm_bindgen(js_name = bodyAskVolume)]
+    pub fn body_ask_volume(&self, body: Tag) -> Result<f64, JsError> {
+        self.inner.body_ask_volume(body).map_err(to_js)
+    }
+
+    /// Axis-aligned bounding box as `[min_x, min_y, min_z, max_x, max_y, max_z]`.
+    #[wasm_bindgen(js_name = bodyAskBoundingBox)]
+    pub fn body_ask_bounding_box(&self, body: Tag) -> Result<Vec<f64>, JsError> {
+        let (min, max) = self.inner.body_ask_bounding_box(body).map_err(to_js)?;
+        Ok(vec![min[0], min[1], min[2], max[0], max[1], max[2]])
+    }
+
     /// Position of a vertex as `[x, y, z]`.
     #[wasm_bindgen(js_name = vertexAskPoint)]
     pub fn vertex_ask_point(&self, vertex: Tag) -> Result<Vec<f64>, JsError> {

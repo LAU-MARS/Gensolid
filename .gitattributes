@@ -1,0 +1,9 @@
+# CAD inputs retain producer whitespace and byte hashes on every checkout OS.
+/corpus/**/*.step -text -whitespace
+/corpus/**/*.stp -text -whitespace
+/corpus/**/*.x_t -text -whitespace
+/corpus/**/*.x_b -text -whitespace
+/corpus/**/*.xmt_txt -text -whitespace
+/corpus/**/*.xmt_bin -text -whitespace
+/corpus/**/*.zip -text -whitespace
+/crates/gensolid-step/tests/fixtures/*.step -text -whitespace

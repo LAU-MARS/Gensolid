@@ -13,6 +13,7 @@
 //! [`GeomStore`] and is evaluated through it.
 
 pub mod curve;
+pub mod intersect;
 pub mod nurbs;
 pub mod param;
 mod project;
@@ -20,7 +21,16 @@ pub mod store;
 pub mod surface;
 
 pub use curve::{Circle, Curve, CurveDerivs, Ellipse, Line};
+pub use intersect::{
+    IntersectionCase, IntersectionScore, IntersectionSet, analytic_intersection_score,
+    intersect_curve_surface, intersect_surfaces, intersection_score,
+};
 pub use nurbs::{BCurve, BSurface};
 pub use param::ParamRange;
-pub use store::{CurveId, CurveProjection, GeomStore, SurfaceId};
+pub use store::{
+    CurveId, CurveProjection, GeomStore, ProjectionKind, SurfaceId, SurfaceProjection,
+};
 pub use surface::{Cone, Cylinder, Plane, Sphere, Spun, Surface, SurfaceDerivs, Swept, Torus};
+
+#[cfg(test)]
+mod robustness_tests;

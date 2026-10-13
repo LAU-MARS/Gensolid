@@ -1,0 +1,24 @@
+[package]
+name = "gensolid-oracle"
+description = "Out-of-process OCCT differential tests for the Gensolid kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+gensolid-api.workspace = true
+gensolid-check.workspace = true
+gensolid-core.workspace = true
+gensolid-geom.workspace = true
+gensolid-math.workspace = true
+gensolid-step.workspace = true
+gensolid-xt.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

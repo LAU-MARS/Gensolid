@@ -1,0 +1,297 @@
+{
+  "dataset": "original OCCT development solids and negative inputs",
+  "producer": "OCP 7.7.2.1",
+  "seed": 20261013,
+  "files": [
+    {
+      "file": "block-0.step",
+      "sha256": "5575d761882ef1b8778d6c72c89e8cdcd4a1f0503bb06fa444664754a74e8a91",
+      "bytes": 18041,
+      "construction": "block",
+      "dimensions": [
+        4.960591406864421,
+        1.708266387016389,
+        7.056888194964094
+      ],
+      "rotation_axis": [
+        0.8222732947137694,
+        -0.34415091640698425,
+        -0.05273963366479473
+      ],
+      "rotation_angle": -0.5101467837594624,
+      "translation": [
+        4.731165084604584,
+        3.773137048900349,
+        13.104028022627531
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "cylinder-0.step",
+      "sha256": "700f81b6712943280fed87619313de0f1e6627c50983a7653ed1c420a77104ed",
+      "bytes": 6493,
+      "construction": "cylinder",
+      "dimensions": [
+        7.080394898717656,
+        6.7604731602931345,
+        0.7745267402081986
+      ],
+      "rotation_axis": [
+        -0.5575300943936166,
+        0.4534189041575629,
+        0.6475730770226646
+      ],
+      "rotation_angle": -2.3730825935733426,
+      "translation": [
+        -10.002951443192071,
+        -14.843005776129772,
+        -1.9269047709074592
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "cone-0.step",
+      "sha256": "8c7190700e74c9356e6a1752d589ad0d333574cc057d2f3668ff93bce6521242",
+      "bytes": 6476,
+      "construction": "cone",
+      "dimensions": [
+        5.8758098452848655,
+        0.5641902766069213,
+        5.447281128776783
+      ],
+      "rotation_axis": [
+        -0.5514432910035114,
+        0.17152011227893627,
+        0.2171262017749418
+      ],
+      "rotation_angle": -1.0470096142486365,
+      "translation": [
+        -3.3073595893256744,
+        6.909441751083957,
+        9.081576083715586
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "sphere-0.step",
+      "sha256": "15712c4f74dfb154945c86a8db7384ac0126b7acd141cf65e28bb6b18b87deef",
+      "bytes": 2259,
+      "construction": "sphere",
+      "dimensions": [
+        3.8663371015540275,
+        7.444566358715214,
+        4.575192416488885
+      ],
+      "rotation_axis": [
+        -0.04954301668387551,
+        -0.08392909199112575,
+        0.7837805210879518
+      ],
+      "rotation_angle": -1.5355043595625517,
+      "translation": [
+        9.29452591919928,
+        -7.7618432014122085,
+        13.568578406629548
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "torus-0.step",
+      "sha256": "bc457b99322cdc83d12f31b54fc80c2c2e3d00e6a143b9d8e50160d46828abe0",
+      "bytes": 4476,
+      "construction": "torus",
+      "dimensions": [
+        5.5637753476647624,
+        6.585216109722173,
+        0.9993069134436896
+      ],
+      "rotation_axis": [
+        0.28793258598267135,
+        -0.9078631901193142,
+        0.9721993125671338
+      ],
+      "rotation_angle": 1.013239767942017,
+      "translation": [
+        -17.188683309649925,
+        19.47078810491761,
+        -1.9404133732999327
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "block_with_hole-0.step",
+      "sha256": "79c69d9e65b043ccb35e3ff60d8c1fa3242c403f08d998e3ff94a3ab4c93537f",
+      "bytes": 34487,
+      "construction": "block_with_hole",
+      "dimensions": [
+        7.973101953592472,
+        0.397480515576517,
+        7.23350300172072
+      ],
+      "rotation_axis": [
+        0.6096115861172862,
+        0.9080888840668422,
+        -0.5920077506535666
+      ],
+      "rotation_angle": -1.817480212762001,
+      "translation": [
+        16.426009483712733,
+        13.653809497196875,
+        -18.446802586156196
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "block-1.step",
+      "sha256": "e25d500af5817584dd04e7e3d16dbab8d3f2dcbc455c35ad36adfd48bceff670",
+      "bytes": 18213,
+      "construction": "block",
+      "dimensions": [
+        7.980271714459032,
+        7.8798977297117645,
+        2.5132751811322223
+      ],
+      "rotation_axis": [
+        -0.9217172381677157,
+        -0.4108792669305015,
+        0.0012987380127571502
+      ],
+      "rotation_angle": -0.2350605847162166,
+      "translation": [
+        -14.178832827948376,
+        2.080635535846792,
+        -3.8651890161829954
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "cylinder-1.step",
+      "sha256": "a54afb1dd3b1301ed5389d05660e3ecc46d76d4a8b8267b655702de2fca1bdf4",
+      "bytes": 6450,
+      "construction": "cylinder",
+      "dimensions": [
+        6.71447993725288,
+        1.3284330982392771,
+        5.222092468228071
+      ],
+      "rotation_axis": [
+        0.38186354248595733,
+        0.3722232065095803,
+        0.23803496270728952
+      ],
+      "rotation_angle": 0.8513008511124038,
+      "translation": [
+        -19.652641501014244,
+        -2.0647371260975476,
+        -12.333592001194958
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "cone-1.step",
+      "sha256": "138bc00f79833fe83d9a62d2883beadf671a4ca8ab2588ff984afae8f79e7af1",
+      "bytes": 6468,
+      "construction": "cone",
+      "dimensions": [
+        6.400087991306443,
+        6.1234911719672125,
+        4.382919060655162
+      ],
+      "rotation_axis": [
+        0.18359779405023868,
+        0.5498656797158366,
+        0.8039849318212096
+      ],
+      "rotation_angle": 2.6915589559090902,
+      "translation": [
+        3.4837032341020624,
+        -8.726924155768977,
+        0.16118096468119703
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "sphere-1.step",
+      "sha256": "aecc92c1d06f141db2e88d778d75ffc4c1c616912bfb5d8ab012827c2d3cf6e2",
+      "bytes": 2262,
+      "construction": "sphere",
+      "dimensions": [
+        2.896009954997762,
+        3.973542982243389,
+        6.628713312432513
+      ],
+      "rotation_axis": [
+        0.37034770315083865,
+        -0.4450553832205659,
+        0.43073013749421474
+      ],
+      "rotation_angle": 2.4492914771133236,
+      "translation": [
+        19.517177111204177,
+        -5.536130283418071,
+        12.943507685667235
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "torus-1.step",
+      "sha256": "b207d7a76187d99ebfff324d1fb4285b05904e9917e7df44d6df0746d5d443bd",
+      "bytes": 4508,
+      "construction": "torus",
+      "dimensions": [
+        6.661666336678708,
+        4.868472080960098,
+        5.946343013339236
+      ],
+      "rotation_axis": [
+        0.0889373907664377,
+        0.43736779945131565,
+        0.13267886307863597
+      ],
+      "rotation_angle": 2.9925344001495064,
+      "translation": [
+        3.5833449869639225,
+        15.834551415505928,
+        17.582666803803292
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "block_with_hole-1.step",
+      "sha256": "70a128b76a43e24f9940530f305aef4360c7aba187f536fc56c9e75ee529e914",
+      "bytes": 34027,
+      "construction": "block_with_hole",
+      "dimensions": [
+        5.656014972775024,
+        2.289017170130086,
+        1.9981852595882574
+      ],
+      "rotation_axis": [
+        0.21009119734860282,
+        -0.3444188993407715,
+        -0.6068166016347529
+      ],
+      "rotation_angle": -1.6256196126141655,
+      "translation": [
+        7.870655294461454,
+        -19.191705547513564,
+        -6.883648356061451
+      ],
+      "producer_valid": true
+    },
+    {
+      "file": "invalid-vertex.step",
+      "sha256": "838f2fdcdf1c42e14b1a6e51f543d284768fe4820410cf545b7512be1a0d6e7b",
+      "bytes": 18051,
+      "construction": "intentional mutation of block-0",
+      "mutation": "move a referenced point"
+    },
+    {
+      "file": "missing-reference.step",
+      "sha256": "30bb89f61582c26943a6abd602dfe2749885e09fe60ff11a1513f9a53e332b9f",
+      "bytes": 17969,
+      "construction": "intentional mutation of block-0",
+      "mutation": "delete a referenced point"
+    }
+  ]
+}

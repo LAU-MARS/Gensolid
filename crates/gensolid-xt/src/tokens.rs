@@ -1,7 +1,9 @@
 //! Tokenizer for the text node stream.
 //!
 //! Classifies whitespace-separated tokens; interpreting them as node fields requires the
-//! schema named in the preamble and is done by the (future) node decoder.
+//! schema named in the preamble and is done by the strict decoder in `import`.
+//! These tokens are only diagnostic counts: XT length-prefixed strings and
+//! character fields do not obey ordinary whitespace-separated token framing.
 
 /// Lexical class of a token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

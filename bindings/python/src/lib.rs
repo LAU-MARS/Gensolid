@@ -6,6 +6,8 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 
+type PyPoint = (f64, f64, f64);
+
 fn to_py(error: Error) -> PyErr {
     let message = error.to_string();
     match error.code() {
@@ -77,6 +79,17 @@ impl Session {
             .into_iter()
             .map(|f| (format!("{:?}", f.state), f.entity, f.message))
             .collect())
+    }
+
+    /// Axis-aligned bounding box as `((min_x, min_y, min_z), (max_x, max_y, max_z))`.
+    fn body_ask_bounding_box(&self, body: Tag) -> PyResult<(PyPoint, PyPoint)> {
+        let ([x0, y0, z0], [x1, y1, z1]) = self.inner.body_ask_bounding_box(body).map_err(to_py)?;
+        Ok(((x0, y0, z0), (x1, y1, z1)))
+    }
+
+    /// Volume of the solid regions of a body.
+    fn body_ask_volume(&self, body: Tag) -> PyResult<f64> {
+        self.inner.body_ask_volume(body).map_err(to_py)
     }
 
     /// Position of a vertex.

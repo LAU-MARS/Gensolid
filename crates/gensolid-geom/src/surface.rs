@@ -358,6 +358,56 @@ pub enum Surface {
 }
 
 impl Surface {
+    /// Parameters of a global closest point on an analytic surface.
+    pub(crate) fn analytic_projection(&self, p: Point3) -> Option<(f64, f64)> {
+        let longitude = |x: f64, y: f64| y.atan2(x).rem_euclid(TAU);
+        match self {
+            Self::Plane(s) => {
+                let local = s.frame.to_local(p);
+                Some((local.x, local.y))
+            }
+            Self::Cylinder(s) => {
+                let local = s.frame.to_local(p);
+                Some((longitude(local.x, local.y), local.z))
+            }
+            Self::Cone(s) => {
+                let local = s.frame.to_local(p);
+                let rho = local.x.hypot(local.y);
+                let theta = longitude(local.x, local.y);
+                let (sn, cs) = s.semi_angle.sin_cos();
+                // The full double cone intersects a meridian plane in two complete
+                // generator lines. Project onto both and select the closer point.
+                let candidate = |signed_rho: f64, u: f64| {
+                    let v = local.z * cs * cs + (signed_rho - s.radius) * sn * cs;
+                    let distance = ((signed_rho - s.radius) * cs - local.z * sn).abs();
+                    (u, v, distance)
+                };
+                let a = candidate(rho, theta);
+                let b = candidate(-rho, (theta + std::f64::consts::PI).rem_euclid(TAU));
+                let best = if a.2 <= b.2 { a } else { b };
+                Some((best.0, best.1))
+            }
+            Self::Sphere(s) => {
+                let local = s.frame.to_local(p);
+                Some((
+                    longitude(local.x, local.y),
+                    local.z.atan2(local.x.hypot(local.y)),
+                ))
+            }
+            Self::Torus(s) => {
+                let local = s.frame.to_local(p);
+                Some((
+                    longitude(local.x, local.y),
+                    local
+                        .z
+                        .atan2(local.x.hypot(local.y) - s.major)
+                        .rem_euclid(TAU),
+                ))
+            }
+            Self::BSurface(_) | Self::Swept(_) | Self::Spun(_) => None,
+        }
+    }
+
     /// Distance from `p` to an analytic surface, or `None` for classes that need the store.
     pub(crate) fn analytic_distance(&self, p: Point3) -> Option<f64> {
         match self {

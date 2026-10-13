@@ -1,0 +1,37 @@
+{
+  "dataset": "original OCCT hollow block",
+  "producer": "OCP 7.7.2.1 black-box export",
+  "source_fixture": "crates/gensolid-step/tests/fixtures/hollow_block.step",
+  "construction": {
+    "outer_dimensions": [
+      4,
+      6,
+      8
+    ],
+    "inner_dimensions": [
+      2,
+      3,
+      4
+    ],
+    "expected_volume": 168
+  },
+  "files": [
+    {
+      "file": "hollow-block.step",
+      "sha256": "c16525ea4e0b687fd21f9c8c7623d128ec522d6e0e24d75062ac141dde3bf006",
+      "bytes": 29394
+    },
+    {
+      "file": "hollow-concave-outer.step",
+      "sha256": "a58f8347eafa0f652d418ab836e953a5c049b85ac7b2904fabc850ffd71d17ff",
+      "bytes": 41931,
+      "expected_import_scope": "unproven convex containment is explicitly unsupported"
+    },
+    {
+      "file": "hollow-cylinder.step",
+      "sha256": "853011c6065ec1d2d0fc147a9ac736aa5011c56c79f0068b70dd2085ba1d48bb",
+      "bytes": 19627,
+      "expected_import_scope": "unproven convex containment is explicitly unsupported"
+    }
+  ]
+}

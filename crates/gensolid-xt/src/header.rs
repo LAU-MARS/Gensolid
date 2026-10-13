@@ -75,14 +75,20 @@ pub fn read_text(input: &str) -> Result<TextFile<'_>> {
             _ => None,
         };
         if let Some(expected) = expected_charset {
-            if !trimmed.starts_with(expected) {
+            if !trimmed
+                .strip_prefix(expected)
+                .is_some_and(|padding| padding.bytes().all(|byte| byte == b'*'))
+            {
                 return Err(Error::parse(
                     "character-set check lines missing or altered; not text XT, or transcoded",
                 ));
             }
             continue;
         }
-        if trimmed.starts_with(END_OF_HEADER) {
+        if let Some(padding) = trimmed.strip_prefix(END_OF_HEADER) {
+            if !padding.bytes().all(|byte| byte == b'*') {
+                return Err(Error::parse("altered end-of-header marker"));
+            }
             data_start = Some(offset);
             break;
         }
@@ -122,6 +128,20 @@ pub fn read_text(input: &str) -> Result<TextFile<'_>> {
         }
         previous = [previous[1], Some(word)];
     }
+    // Real text XT packs length-prefixed strings together and wraps physical
+    // lines inside those strings. Ordinary whitespace words are only a legacy
+    // header diagnostic; the strict stream reader supplies authoritative values.
+    if let Ok(internal) = parasolid_core::inspect_xt(
+        input.as_bytes(),
+        parasolid_core::InspectionLimits::default(),
+    ) {
+        modeller_version = internal
+            .modeller_version
+            .split_whitespace()
+            .last()
+            .map(str::to_owned);
+        schema = Some(internal.schema_key);
+    }
     Ok(TextFile {
         header,
         modeller_version,
@@ -160,8 +180,8 @@ pub fn write_text_header(header: &TextHeader) -> Result<String> {
         .into_iter()
         .flatten()
     {
-        let key_ok = !key.is_empty() && !key.contains(['=', ';', '\n']);
-        if !key_ok || value.contains([';', '\n']) {
+        let key_ok = !key.is_empty() && !key.contains(['=', ';', '\n', '\r']);
+        if !key_ok || value.contains([';', '\n', '\r']) {
             return Err(Error::invalid_argument(format!(
                 "header item {key:?} cannot be encoded"
             )));

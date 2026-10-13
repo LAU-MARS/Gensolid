@@ -10,8 +10,9 @@ use std::collections::HashMap;
 pub use gensolid_check::FaultKind;
 use gensolid_check::{CheckOptions, check_body};
 pub use gensolid_core::{Error, ErrorCode, Precision, Result};
-use gensolid_math::{Frame, Point3, Vec3};
-use gensolid_topo::{BodyId, EntityRef, Model, make_block};
+use gensolid_math::{Frame, Point2, Point3, Vec2, Vec3};
+pub use gensolid_modeling::MassProperties;
+use gensolid_topo::{BodyId, EdgeId, EntityRef, Model, body_bounding_box, body_volume};
 
 /// Integer handle to an entity. Tags are never reused within a session.
 pub type Tag = i32;
@@ -71,6 +72,17 @@ pub struct CheckFault {
     pub message: String,
 }
 
+/// Stable session tags returned by a checked line-edge subdivision.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EdgeSplit {
+    /// Original edge, retained as the first segment.
+    pub original_edge: Tag,
+    /// New second segment.
+    pub new_edge: Tag,
+    /// New vertex shared by the two segments.
+    pub vertex: Tag,
+}
+
 /// A modelling session: one model plus its tag table.
 pub struct Session {
     model: Model,
@@ -86,6 +98,13 @@ fn vector(v: [f64; 3]) -> Vec3 {
     Vec3::new(v[0], v[1], v[2])
 }
 
+fn profile_points(profile: &[[f64; 2]]) -> Vec<Point2> {
+    profile
+        .iter()
+        .map(|point| Point2::new(point[0], point[1]))
+        .collect()
+}
+
 impl Session {
     /// Starts a session.
     pub fn start(options: SessionOptions) -> Self {
@@ -99,6 +118,29 @@ impl Session {
     /// The underlying model, for read-only inspection.
     pub const fn model(&self) -> &Model {
         &self.model
+    }
+
+    fn ensure_tag_capacity(&self, additional: usize) -> Result<()> {
+        let count = self
+            .entities
+            .len()
+            .checked_add(additional)
+            .ok_or_else(|| Error::new(ErrorCode::CapacityExceeded, "tag space exhausted"))?;
+        Tag::try_from(count)
+            .map_err(|_| Error::new(ErrorCode::CapacityExceeded, "tag space exhausted"))?;
+        Ok(())
+    }
+
+    fn basis_frame(&self, basis: Option<&Axis2>) -> Result<Frame> {
+        match basis {
+            None => Ok(Frame::WORLD),
+            Some(basis) => Frame::new(
+                point(basis.location),
+                vector(basis.axis),
+                vector(basis.ref_direction),
+                self.model.precision(),
+            ),
+        }
     }
 
     fn tag(&mut self, entity: EntityRef) -> Result<Tag> {
@@ -141,6 +183,16 @@ impl Session {
         }
     }
 
+    fn edge_id(&self, tag: Tag) -> Result<EdgeId> {
+        match self.entity(tag)? {
+            EntityRef::Edge(id) => Ok(id),
+            other => Err(Error::new(
+                ErrorCode::WrongEntityClass,
+                format!("tag {tag} is {other:?}, not an edge"),
+            )),
+        }
+    }
+
     /// Class of the entity a tag refers to.
     pub fn entity_ask_class(&self, tag: Tag) -> Result<Class> {
         Ok(match self.entity(tag)? {
@@ -164,18 +216,101 @@ impl Session {
         z: f64,
         basis: Option<&Axis2>,
     ) -> Result<Tag> {
-        let precision = *self.model.precision();
-        let frame = match basis {
-            None => Frame::WORLD,
-            Some(b) => Frame::new(
-                point(b.location),
-                vector(b.axis),
-                vector(b.ref_direction),
-                &precision,
-            )?,
-        };
-        let body = make_block(&mut self.model, x, y, z, &frame)?;
+        self.ensure_tag_capacity(1)?;
+        let frame = self.basis_frame(basis)?;
+        let body = gensolid_modeling::body_create_solid_block(&mut self.model, x, y, z, &frame)?;
         self.tag(EntityRef::Body(body))
+    }
+
+    /// Create a checked solid prism from a convex local XY polygon and a positive
+    /// height. The polygon may have either winding and must not repeat its first point.
+    pub fn body_create_solid_prism(
+        &mut self,
+        profile: &[[f64; 2]],
+        height: f64,
+        basis: Option<&Axis2>,
+    ) -> Result<Tag> {
+        self.ensure_tag_capacity(1)?;
+        let frame = self.basis_frame(basis)?;
+        let body = gensolid_modeling::body_create_solid_prism(
+            &mut self.model,
+            &profile_points(profile),
+            height,
+            &frame,
+        )?;
+        self.tag(EntityRef::Body(body))
+    }
+
+    /// Create a checked linear sweep of a convex local XY polygon by a finite
+    /// world-coordinate displacement. Either normal direction is supported.
+    pub fn body_create_solid_linear_sweep(
+        &mut self,
+        profile: &[[f64; 2]],
+        displacement: [f64; 3],
+        basis: Option<&Axis2>,
+    ) -> Result<Tag> {
+        self.ensure_tag_capacity(1)?;
+        let frame = self.basis_frame(basis)?;
+        let body = gensolid_modeling::body_create_solid_linear_sweep(
+            &mut self.model,
+            &profile_points(profile),
+            vector(displacement),
+            &frame,
+        )?;
+        self.tag(EntityRef::Body(body))
+    }
+
+    /// Create a checked planar homothetic loft to a positively scaled copy of a
+    /// convex local XY polygon. The top translation uses the basis XY axes.
+    pub fn body_create_solid_homothetic_loft(
+        &mut self,
+        profile: &[[f64; 2]],
+        height: f64,
+        top_scale: f64,
+        top_translation: [f64; 2],
+        basis: Option<&Axis2>,
+    ) -> Result<Tag> {
+        self.ensure_tag_capacity(1)?;
+        let frame = self.basis_frame(basis)?;
+        let body = gensolid_modeling::body_create_solid_homothetic_loft(
+            &mut self.model,
+            &profile_points(profile),
+            height,
+            top_scale,
+            Vec2::new(top_translation[0], top_translation[1]),
+            &frame,
+        )?;
+        self.tag(EntityRef::Body(body))
+    }
+
+    /// Create a checked convex polyhedron from world-coordinate vertices and
+    /// outward counter-clockwise faces using zero-based vertex indices.
+    pub fn body_create_solid_convex_polyhedron(
+        &mut self,
+        vertices: &[[f64; 3]],
+        faces: &[Vec<usize>],
+    ) -> Result<Tag> {
+        self.ensure_tag_capacity(1)?;
+        let points: Vec<_> = vertices.iter().copied().map(point).collect();
+        let body = gensolid_modeling::body_create_solid_convex_polyhedron(
+            &mut self.model,
+            &points,
+            faces,
+        )?;
+        self.tag(EntityRef::Body(body))
+    }
+
+    /// Split a bounded line edge, checking every body sharing it before and after
+    /// subdivision. Existing tags stay valid; the new edge and vertex get fresh tags.
+    pub fn edge_split_line(&mut self, edge: Tag, fraction: f64) -> Result<EdgeSplit> {
+        let id = self.edge_id(edge)?;
+        self.ensure_tag_capacity(2)?;
+        let split = gensolid_modeling::edge_split_line(&mut self.model, id, fraction)?;
+        Ok(EdgeSplit {
+            original_edge: edge,
+            new_edge: self.tag(EntityRef::Edge(split.new_edge))?,
+            vertex: self.tag(EntityRef::Vertex(split.vertex))?,
+        })
     }
 
     /// Faces of a body.
@@ -220,6 +355,24 @@ impl Session {
             .collect()
     }
 
+    /// Axis-aligned bounding box of a body, as `(min_xyz, max_xyz)`.
+    pub fn body_ask_bounding_box(&self, body: Tag) -> Result<([f64; 3], [f64; 3])> {
+        let box_ = body_bounding_box(&self.model, self.body_id(body)?)?;
+        let (min, max) = (box_.min(), box_.max());
+        Ok(([min.x, min.y, min.z], [max.x, max.y, max.z]))
+    }
+
+    /// Volume of the solid regions of a body.
+    pub fn body_ask_volume(&self, body: Tag) -> Result<f64> {
+        body_volume(&self.model, self.body_id(body)?)
+    }
+
+    /// Checked unit-density volume, centroid, boundary area and centroidal inertia
+    /// for planar straight-edged material boundaries, including holes and cavities.
+    pub fn body_ask_mass_properties(&self, body: Tag) -> Result<MassProperties> {
+        gensolid_modeling::body_ask_mass_properties(&self.model, self.body_id(body)?)
+    }
+
     /// Position of a vertex.
     pub fn vertex_ask_point(&self, vertex: Tag) -> Result<[f64; 3]> {
         match self.entity(vertex)? {
@@ -236,6 +389,7 @@ impl Session {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -253,6 +407,11 @@ mod tests {
         assert_eq!(vertices.len(), 8);
         assert_eq!(s.vertex_ask_point(vertices[0]).unwrap(), [-0.5, -1.0, -1.5]);
         assert!(s.body_check(body).unwrap().is_empty());
+        assert_eq!(s.body_ask_volume(body).unwrap(), 6.0);
+        assert_eq!(
+            s.body_ask_bounding_box(body).unwrap(),
+            ([-0.5, -1.0, -1.5], [0.5, 1.0, 1.5])
+        );
     }
 
     #[test]
@@ -294,5 +453,161 @@ mod tests {
                     && (z.abs() - 1.0).abs() <= tol
             );
         }
+    }
+
+    #[test]
+    fn checked_polyhedral_operations_and_mass_are_available_through_tags() {
+        let mut session = Session::start(SessionOptions::default());
+        let p = *session.model().precision();
+        let profile = [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]];
+        let basis = Axis2 {
+            location: [3.0, 2.0, 1.0],
+            axis: [0.0, 1.0, 1.0],
+            ref_direction: [1.0, 0.0, 0.0],
+        };
+        let frame = session.basis_frame(Some(&basis)).unwrap();
+        let prism = session
+            .body_create_solid_prism(&profile, 3.0, Some(&basis))
+            .unwrap();
+        let sweep = session
+            .body_create_solid_linear_sweep(&profile, [1.0, 0.0, -3.0], None)
+            .unwrap();
+        let loft = session
+            .body_create_solid_homothetic_loft(&profile, 3.0, 2.0, [0.5, -0.25], None)
+            .unwrap();
+        let tetrahedron = session
+            .body_create_solid_convex_polyhedron(
+                &[
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 2.0, 0.0],
+                    [0.0, 0.0, 3.0],
+                ],
+                &[vec![0, 2, 1], vec![0, 1, 3], vec![0, 3, 2], vec![1, 2, 3]],
+            )
+            .unwrap();
+        for (body, volume) in [
+            (prism, 12.0),
+            (sweep, 12.0),
+            (loft, 28.0),
+            (tetrahedron, 1.0),
+        ] {
+            assert_eq!(session.entity_ask_class(body).unwrap(), Class::Body);
+            assert!(session.body_check(body).unwrap().is_empty());
+            let mass = session.body_ask_mass_properties(body).unwrap();
+            assert!((mass.volume - volume).abs() <= p.linear() * mass.surface_area);
+        }
+        assert!(
+            session
+                .body_ask_mass_properties(prism)
+                .unwrap()
+                .centroid
+                .distance(frame.origin() + frame.z() * 1.5)
+                <= p.linear()
+        );
+        assert!(
+            session
+                .body_ask_mass_properties(sweep)
+                .unwrap()
+                .centroid
+                .distance(Point3::new(0.5, 0.0, -1.5))
+                <= p.linear()
+        );
+        assert!(
+            session
+                .body_ask_mass_properties(tetrahedron)
+                .unwrap()
+                .centroid
+                .distance(Point3::new(0.25, 0.5, 0.75))
+                <= p.linear()
+        );
+    }
+
+    #[test]
+    fn checked_euler_split_preserves_old_tags_and_publishes_new_entities() {
+        let mut session = Session::start(SessionOptions::default());
+        let body = session
+            .body_create_solid_block(1.0, 2.0, 3.0, None)
+            .unwrap();
+        let old_edges = session.body_ask_edges(body).unwrap();
+        let old_vertices = session.body_ask_vertices(body).unwrap();
+        let before = session.body_ask_mass_properties(body).unwrap();
+        let edge = old_edges[0];
+        let id = session.edge_id(edge).unwrap();
+        let start = session
+            .model
+            .vertex(session.model.edge(id).unwrap().start.unwrap())
+            .unwrap()
+            .point;
+        let end = session
+            .model
+            .vertex(session.model.edge(id).unwrap().end.unwrap())
+            .unwrap()
+            .point;
+        let split = session.edge_split_line(edge, 0.4).unwrap();
+        assert_eq!(split.original_edge, edge);
+        assert_eq!(
+            session.entity_ask_class(split.new_edge).unwrap(),
+            Class::Edge
+        );
+        assert_eq!(
+            session.entity_ask_class(split.vertex).unwrap(),
+            Class::Vertex
+        );
+        let p = session.model.precision().linear();
+        assert!(
+            point(session.vertex_ask_point(split.vertex).unwrap())
+                .distance(start + (end - start) * 0.4)
+                <= p
+        );
+        let edges = session.body_ask_edges(body).unwrap();
+        let vertices = session.body_ask_vertices(body).unwrap();
+        assert_eq!(edges.len(), 13);
+        assert_eq!(vertices.len(), 9);
+        assert!(old_edges.iter().all(|edge| edges.contains(edge)));
+        assert!(old_vertices.iter().all(|vertex| vertices.contains(vertex)));
+        assert!(edges.contains(&split.new_edge));
+        assert!(vertices.contains(&split.vertex));
+        assert!(session.body_check(body).unwrap().is_empty());
+        let after = session.body_ask_mass_properties(body).unwrap();
+        assert!((after.volume - before.volume).abs() <= p * after.surface_area);
+        assert_eq!(
+            session.edge_split_line(body, 0.5).unwrap_err().code(),
+            ErrorCode::WrongEntityClass
+        );
+        assert_eq!(
+            session.body_ask_mass_properties(edge).unwrap_err().code(),
+            ErrorCode::WrongEntityClass
+        );
+    }
+
+    #[test]
+    fn invalid_checked_constructors_do_not_publish_bodies_or_tags() {
+        let mut session = Session::start(SessionOptions::default());
+        let concave = [[0.0, 0.0], [2.0, 0.0], [1.0, 0.25], [2.0, 2.0], [0.0, 2.0]];
+        assert_eq!(
+            session
+                .body_create_solid_prism(&concave, 1.0, None)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidArgument
+        );
+        let profile = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
+        assert_eq!(
+            session
+                .body_create_solid_linear_sweep(&profile, [1.0, 0.0, 0.0], None)
+                .unwrap_err()
+                .code(),
+            ErrorCode::Degenerate
+        );
+        assert_eq!(
+            session
+                .body_create_solid_homothetic_loft(&profile, 1.0, 0.0, [0.0, 0.0], None)
+                .unwrap_err()
+                .code(),
+            ErrorCode::InvalidArgument
+        );
+        assert_eq!(session.model.bodies().count(), 0);
+        assert!(session.entities.is_empty());
     }
 }

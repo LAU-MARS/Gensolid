@@ -23,6 +23,15 @@ fn sign_of(value: f64) -> Option<Sign> {
 /// Orientation of `c` relative to the directed line `a → b`: `Positive` if `a, b, c` turn
 /// counter-clockwise, `Zero` if collinear. `None` for non-finite input.
 pub fn orient2d(a: Point2, b: Point2, c: Point2) -> Option<Sign> {
+    if !(a.x.is_finite()
+        && a.y.is_finite()
+        && b.x.is_finite()
+        && b.y.is_finite()
+        && c.x.is_finite()
+        && c.y.is_finite())
+    {
+        return None;
+    }
     let coord = |p: Point2| Coord { x: p.x, y: p.y };
     sign_of(robust::orient2d(coord(a), coord(b), coord(c)))
 }
@@ -31,6 +40,9 @@ pub fn orient2d(a: Point2, b: Point2, c: Point2) -> Option<Sign> {
 /// side from which `a, b, c` appear clockwise (that is, below the plane when `a, b, c` are
 /// counter-clockwise seen from above), `Zero` if coplanar. `None` for non-finite input.
 pub fn orient3d(a: Point3, b: Point3, c: Point3, d: Point3) -> Option<Sign> {
+    if !(a.is_finite() && b.is_finite() && c.is_finite() && d.is_finite()) {
+        return None;
+    }
     let coord = |p: Point3| Coord3D {
         x: p.x,
         y: p.y,
@@ -87,5 +99,24 @@ mod tests {
             orient2d(a, Point2::new(1.0, 0.0), Point2::new(0.0, 1.0)),
             None
         );
+        for invalid in [f64::NEG_INFINITY, f64::INFINITY, f64::NAN] {
+            assert_eq!(
+                orient2d(
+                    Point2::new(invalid, 0.0),
+                    Point2::new(1.0, 0.0),
+                    Point2::new(0.0, 1.0)
+                ),
+                None
+            );
+            assert_eq!(
+                orient3d(
+                    Point3::ORIGIN,
+                    Point3::new(invalid, 0.0, 0.0),
+                    Point3::new(0.0, 1.0, 0.0),
+                    Point3::new(0.0, 0.0, 1.0)
+                ),
+                None
+            );
+        }
     }
 }

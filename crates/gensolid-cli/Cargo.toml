@@ -1,0 +1,27 @@
+[package]
+name = "gensolid-cli"
+description = "File diagnostics and development milestone reports for Gensolid."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+gensolid-core.workspace = true
+gensolid-geom.workspace = true
+gensolid-math.workspace = true
+gensolid-topo.workspace = true
+gensolid-modeling = { path = "../gensolid-modeling" }
+gensolid-mesh = { path = "../gensolid-mesh" }
+gensolid-step.workspace = true
+gensolid-xt.workspace = true
+gensolid-oracle = { path = "../../verifier/oracle" }
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "=0.10.9"
+
+[lints]
+workspace = true

@@ -48,9 +48,17 @@ impl ParamRange {
     }
 
     /// Maps `t` into the range: wraps periodic ranges, clamps the others.
+    /// Invalid bounds yield NaN instead of panicking; checked geometry evaluation
+    /// rejects non-finite parameters and results.
     pub fn normalize(&self, t: f64) -> f64 {
+        if self.lo.is_nan() || self.hi.is_nan() || self.lo > self.hi {
+            return f64::NAN;
+        }
         match self.period() {
-            Some(period) if period > 0.0 => self.lo + (t - self.lo).rem_euclid(period),
+            Some(period) if period.is_finite() && period > 0.0 => {
+                self.lo + (t.rem_euclid(period) - self.lo.rem_euclid(period)).rem_euclid(period)
+            }
+            Some(_) => f64::NAN,
             _ => t.clamp(self.lo, self.hi),
         }
     }

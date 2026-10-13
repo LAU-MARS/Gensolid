@@ -10,6 +10,14 @@ authors.workspace = true
 
 [dependencies]
 gensolid-core.workspace = true
+gensolid-math.workspace = true
+gensolid-geom.workspace = true
+gensolid-topo.workspace = true
+gensolid-check.workspace = true
+parasolid-core = "=0.3.7"
+
+[dev-dependencies]
+proptest.workspace = true
 
 [lints]
 workspace = true

@@ -1,0 +1,40 @@
+{
+  "dataset": "ABC v00 official example",
+  "source": "https://deep-geometry.github.io/abc-dataset/",
+  "selection": "The single example linked by the dataset authors; development smoke sample, not a private acceptance corpus.",
+  "files": [
+    {
+      "file": "00000050_80d90bfdd2e74e709956122a_step_000.step",
+      "url": "https://deep-geometry.github.io/abc-dataset/data/00000050_80d90bfdd2e74e709956122a_step_000.step",
+      "sha256": "579e4b3e18709f6888a4179f189926e40c35a35c156392ec593105cf1650a60c",
+      "bytes": 98966
+    },
+    {
+      "file": "00000050_80d90bfdd2e74e709956122a_parasolid_000.zip",
+      "url": "https://deep-geometry.github.io/abc-dataset/data/00000050_80d90bfdd2e74e709956122a_parasolid_000.zip",
+      "sha256": "57ce8354ada505bfad2c2b4b7439761490f19feb85ed88b0041ae365812a888e",
+      "bytes": 20298
+    },
+    {
+      "file": "Part Studio 1 - Part 1.x_t",
+      "archive": "00000050_80d90bfdd2e74e709956122a_parasolid_000.zip",
+      "member": "Part Studio 1 - Part 1.x_t",
+      "sha256": "ea041f7bd5c3a5afb055b2163e981a7ea1e00cdf994b65ebe7e4e58ea349f888",
+      "bytes": 40112
+    },
+    {
+      "file": "Part Studio 1 - Part 2.x_t",
+      "archive": "00000050_80d90bfdd2e74e709956122a_parasolid_000.zip",
+      "member": "Part Studio 1 - Part 2.x_t",
+      "sha256": "6ccbf08a97e5769d2b458b2156872a11b4065021ac364df385344ef738202347",
+      "bytes": 10547
+    },
+    {
+      "file": "Part Studio 1 - Part 3.x_t",
+      "archive": "00000050_80d90bfdd2e74e709956122a_parasolid_000.zip",
+      "member": "Part Studio 1 - Part 3.x_t",
+      "sha256": "b5169644405fd3209249dd08f5ff0dc7b44fd5d3bec8a575395f33ed876bac91",
+      "bytes": 4811
+    }
+  ]
+}
