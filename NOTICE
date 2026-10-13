@@ -8,6 +8,18 @@ affiliated with or endorsed by Siemens.
 
 Third-party code included in this distribution
 ----------------------------------------------
-None yet. When code derived from another Apache-2.0 project (for example truck,
-https://github.com/ricosjp/truck) is added, that project's copyright notice and
-NOTICE text are reproduced here.
+No upstream algorithm source is vendored in this source distribution. Optional
+native dependencies linked by selected builds are listed below.
+
+Optional native dependency: NVIDIA USD BRep / SMLib
+------------------------------------------------
+https://github.com/NVIDIA-Omniverse/usd-brep
+Pinned revision: c9c5979f04cea8c38213004d4f04df0dcfb40d05
+Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Licensed under the Apache License, Version 2.0.
+
+The optional gensolid-ffi/smlib feature links the upstream SMLib core and selected
+SM_API sources. Upstream source is obtained separately, not vendored here. The
+native builder stages upstream LICENSE and THIRD_PARTY_NOTICES.md next to its
+archive; include applicable notices with distributions that enable this feature.
+The Gensolid adapter is original interface code. No OCCT code is linked.

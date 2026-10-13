@@ -119,6 +119,7 @@ A Rust B-rep kernel, and the reference for Gensolid's NURBS implementation. truc
 
 ### Dependencies
 
+- [NVIDIA USD BRep / SMLib](https://github.com/NVIDIA-Omniverse/usd-brep) (Apache-2.0), pinned to `c9c5979f04cea8c38213004d4f04df0dcfb40d05` — optional C++ curve/surface backend through a safe Rust facade (`gensolid-ffi` feature `smlib`). Acknowledgements, build instructions, coverage and limitations: [SMLib integration](docs/smlib.md).
 - [robust](https://github.com/georust/robust) (MIT / Apache-2.0) — a Rust implementation of Shewchuk's exact predicates.
 - [parasolid-core](https://github.com/monozukuri-ai/parasolid-kit) (MIT and Apache-2.0), pinned to 0.3.7 — XT wire/schema decoding; topology and geometry mapping is original Gensolid code.
 - [sha2](https://github.com/RustCrypto/hashes) (MIT / Apache-2.0) — frozen development-corpus integrity checks in the CLI.

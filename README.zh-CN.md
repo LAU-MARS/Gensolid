@@ -119,6 +119,7 @@ Rust B-rep 内核，Gensolid NURBS 实现的参考。truck 与 Gensolid 许可�
 
 ### 依赖库
 
+- [NVIDIA USD BRep / SMLib](https://github.com/NVIDIA-Omniverse/usd-brep)（Apache-2.0），锁定 `c9c5979f04cea8c38213004d4f04df0dcfb40d05`：感谢 NVIDIA 开放此内核；本分支通过 C ABI 和安全 Rust 接口封装其曲线/曲面能力，作为可选 C++ 依赖（`gensolid-ffi` 的 `smlib` feature）。构建、范围及限制见 [SMLib 集成说明](docs/smlib.md)。
 - [robust](https://github.com/georust/robust)（MIT / Apache-2.0）：Shewchuk 精确谓词的 Rust 实现。
 - [parasolid-core](https://github.com/monozukuri-ai/parasolid-kit)（MIT 和 Apache-2.0），锁定 0.3.7：XT 节点/schema 解码；拓扑和几何映射由 Gensolid 独立实现。
 - [sha2](https://github.com/RustCrypto/hashes)（MIT / Apache-2.0）：CLI 冻结开发语料的完整性检查。

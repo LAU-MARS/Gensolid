@@ -19,6 +19,12 @@
     non_upper_case_globals
 )]
 
+/// Optional native SMLib curve and surface backend.
+///
+/// cbindgen:ignore
+#[cfg(feature = "smlib")]
+pub mod smlib;
+
 use std::alloc::{Layout, alloc, dealloc};
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};

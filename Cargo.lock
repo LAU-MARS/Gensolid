@@ -232,6 +232,10 @@ name = "gensolid-ffi"
 version = "0.1.0"
 dependencies = [
  "gensolid-api",
+ "gensolid-core",
+ "gensolid-geom",
+ "gensolid-math",
+ "proptest",
 ]
 
 [[package]]
