@@ -83,6 +83,15 @@ pub struct EdgeSplit {
     pub vertex: Tag,
 }
 
+/// A corresponding convex polygon at a local Z height for ruled solid lofting.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LoftSection {
+    /// Height in the operation's coordinate frame; strictly increasing across sections.
+    pub height: f64,
+    /// Local XY vertices; sections must have the same vertex count and correspondence.
+    pub profile: Vec<[f64; 2]>,
+}
+
 /// A modelling session: one model plus its tag table.
 pub struct Session {
     model: Model,
@@ -281,6 +290,46 @@ impl Session {
             &frame,
         )?;
         self.tag(EntityRef::Body(body))
+    }
+
+    /// Revolve a convex (radius, height) polygon about local Z by `angle` radians.
+    /// Supports partial and full turns; touching/crossing the axis is unsupported.
+    pub fn body_create_solid_revolution(
+        &mut self,
+        profile: &[[f64; 2]],
+        angle: f64,
+        basis: Option<&Axis2>,
+    ) -> Result<Tag> {
+        self.ensure_tag_capacity(1)?;
+        let frame = self.basis_frame(basis)?;
+        let result = gensolid_modeling::body_create_solid_revolution(
+            &mut self.model,
+            &profile_points(profile),
+            angle,
+            &frame,
+        )?;
+        self.tag(EntityRef::Body(result.body))
+    }
+
+    /// Create a checked ruled solid through corresponding convex polygon sections.
+    /// Intermediate sections must remain strictly convex; invalid correspondence is rejected.
+    pub fn body_create_solid_loft_sections(
+        &mut self,
+        sections: &[LoftSection],
+        basis: Option<&Axis2>,
+    ) -> Result<Tag> {
+        self.ensure_tag_capacity(1)?;
+        let frame = self.basis_frame(basis)?;
+        let sections = sections
+            .iter()
+            .map(|s| gensolid_topo::LoftSection {
+                height: s.height,
+                profile: profile_points(&s.profile),
+            })
+            .collect::<Vec<_>>();
+        let result =
+            gensolid_modeling::body_create_solid_loft_sections(&mut self.model, &sections, &frame)?;
+        self.tag(EntityRef::Body(result.body))
     }
 
     /// Create a checked convex polyhedron from world-coordinate vertices and

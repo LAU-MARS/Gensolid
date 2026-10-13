@@ -129,6 +129,28 @@ pub fn edge_split_line(model: &mut Model, edge: EdgeId, fraction: f64) -> Result
     Ok(split)
 }
 
+/// Revolve a convex meridian profile with exact rational circular carriers and check it.
+pub fn body_create_solid_revolution(
+    model: &mut Model,
+    profile: &[Point2],
+    angle: f64,
+    frame: &Frame,
+) -> Result<gensolid_topo::ParametricBody> {
+    let result = gensolid_topo::make_revolution(model, profile, angle, frame)?;
+    body_check_complete(model, result.body)?;
+    Ok(result)
+}
+/// Loft multiple independently shaped convex sections and check the resulting B-rep.
+pub fn body_create_solid_loft_sections(
+    model: &mut Model,
+    sections: &[gensolid_topo::LoftSection],
+    frame: &Frame,
+) -> Result<gensolid_topo::ParametricBody> {
+    let result = gensolid_topo::make_loft_sections(model, sections, frame)?;
+    body_check_complete(model, result.body)?;
+    Ok(result)
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {

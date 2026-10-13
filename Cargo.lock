@@ -328,6 +328,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gensolid-viewer"
+version = "0.1.0"
+dependencies = [
+ "gensolid-check",
+ "gensolid-core",
+ "gensolid-geom",
+ "gensolid-math",
+ "gensolid-modeling",
+ "gensolid-topo",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gensolid-wasm"
 version = "0.1.0"
 dependencies = [

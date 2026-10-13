@@ -71,6 +71,12 @@ cargo run -p gensolid-cli -- benchmark --output target/m0-m1-m2-report.json
 
 The ABC sample is one published model, not a representative corpus. The default benchmark also includes original OCCT solids and negative inputs; frozen manifests keep missing or modified files visible. The report keeps unsupported cases in the intersection denominator and separates OCCT agreement from comparison coverage. `benchmark` exits successfully when it writes a report with intact inputs; inspect its scores to assess coverage. The reserved `--private-score <receipt.json>` interface accepts only `suite_id`, `total`, and `passed`, so private cases can stay with an independent scoring service.
 
+## Interactive geometry viewer
+
+Run `python tools/viewer.py` and open `http://127.0.0.1:8765`. The local viewer calls the Rust kernel for revolution, multi-section solid lofts, smooth NURBS surface lofts and NURBS intersections. Rotate/zoom, change parameters, inspect checker results and export scene JSON. No frontend packages or external services are required.
+
+New checked operations support convex off-axis revolution and corresponding convex polygon sections. Smooth lofts interpolate compatible rational curves. Arbitrary-degree NURBS curve/surface intersection provides interval root certificates; general surface/surface intersection provides numerical curves and a global possible-root cover, **without certified branch connectivity**. Preview meshes carry no chord-error guarantee. See [implementation scope and evidence](docs/advanced-modeling.md); run `python tools/benchmark-advanced.py` for the additional public probes.
+
 ## Roadmap
 
 | Milestone | Theme | Acceptance metric |

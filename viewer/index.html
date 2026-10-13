@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Gensolid · Geometry Lab</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/">G<span>◈</span>NSOLID</a><span class="header-note">GEOMETRY LAB <b>开发预览</b></span><span class="local">● LOCAL KERNEL</span></header>
+<main>
+<aside class="sidebar"><div class="eyebrow">01 / EXPLORE</div><h1>让几何可见。</h1><p class="intro">运行真实内核，观察形体、交线与验证结果。</p><nav id="scenes" aria-label="功能场景"></nav><section class="parameters"><div class="eyebrow">02 / PARAMETERS</div><div id="controls"></div><button id="compute" class="primary">运行内核 →</button><p class="hint">调整参数后点击运行。拖动旋转，滚轮缩放。</p></section><div class="sidebar-foot">原始 NURBS 运算<br>显示网格仅用于预览</div></aside>
+<section class="workspace"><div class="view-heading"><div><div class="eyebrow" id="scene-code">M2 / REVOLUTION</div><h2 id="scene-title">旋转实体</h2></div><div class="toolbar"><button id="home" title="重置视角">重置视角</button><label><input type="checkbox" id="faces" checked>面</label><label><input type="checkbox" id="edges" checked>透视线</label><label><input type="checkbox" id="grid" checked>网格</label></div></div><div class="canvas-wrap"><canvas id="view" aria-label="可交互三维几何预览，拖动旋转、滚轮缩放" tabindex="0"></canvas><div id="overlay" role="status">正在加载内核场景…</div><div class="view-caption"><span id="view-label">NURBS / B-REP</span><span>拖动旋转 · 滚轮缩放</span></div><div class="axis-key"><i class="x">X</i><i class="y">Y</i><i class="z">Z</i></div></div><div class="bottom-bar"><span id="mesh-info">等待几何</span><span>预览网格无弦高认证</span></div></section>
+<aside class="inspector"><div class="eyebrow">03 / EVIDENCE</div><h2>验证结果</h2><div id="status" class="status pending">等待运行</div><p id="summary" class="summary">结果来自本地 Rust 内核。</p><dl id="metrics"></dl><div class="notes" id="notes"></div><button id="download" disabled>导出场景与结果 JSON ↓</button><details><summary>复现输入</summary><pre id="request"></pre></details><p class="evidence-note">绿色表示已完成对应检查。黄色候选交线不代表全局分支完整性已证明。</p></aside>
+</main>
+</body></html>

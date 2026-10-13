@@ -22,6 +22,7 @@ mod euler;
 mod extrusion;
 mod inquire;
 pub mod model;
+mod parametric;
 mod polyhedron;
 
 pub use block::make_block;
@@ -30,4 +31,5 @@ pub use euler::{EdgeSplit, edge_parameter_bounds, split_line_edge};
 pub use extrusion::{make_homothetic_loft, make_linear_sweep, make_prism};
 pub use inquire::{body_bounding_box, body_volume};
 pub use model::{Model, RawEditor};
+pub use parametric::{LoftSection, ParametricBody, make_loft_sections, make_revolution};
 pub use polyhedron::make_convex_polyhedron;

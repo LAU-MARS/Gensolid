@@ -176,6 +176,27 @@ pub fn intersect_curve_surface(
         (Curve::BCurve(curve), Surface::Plane(plane)) => {
             spline_plane::intersect(curve, plane, precision)
         }
+        (Curve::BCurve(c), Surface::BSurface(s)) => {
+            let result = crate::nurbs_intersect::intersect_nurbs_curve_surface(
+                c,
+                s,
+                precision,
+                Default::default(),
+            )?;
+            if !result.complete() {
+                return Err(Error::unimplemented(format!(
+                    "NURBS curve/surface has {} unresolved parameter boxes; inspect the detailed interval report",
+                    result.unresolved.len()
+                )));
+            }
+            if result.roots.is_empty() {
+                Ok(IntersectionSet::Empty)
+            } else {
+                Ok(IntersectionSet::Points(
+                    result.roots.into_iter().map(|r| r.point).collect(),
+                ))
+            }
+        }
         (Curve::BCurve(_), _) | (_, Surface::BSurface(_)) => Err(Error::unimplemented(
             "NURBS intersection is not implemented",
         )),
@@ -221,6 +242,23 @@ pub fn intersect_surfaces(
         (Surface::BSurface(patch), Surface::Plane(plane))
         | (Surface::Plane(plane), Surface::BSurface(patch)) => {
             surface_plane::intersect(patch, plane, precision)
+        }
+        (Surface::BSurface(a), Surface::BSurface(b)) => {
+            let report = crate::nurbs_surface_intersect::intersect_nurbs_surfaces(
+                a,
+                b,
+                precision,
+                Default::default(),
+            )?;
+            if report.identical_overlap {
+                Ok(IntersectionSet::Overlap)
+            } else if report.certified_empty() {
+                Ok(IntersectionSet::Empty)
+            } else {
+                Err(Error::unimplemented(
+                    "nonempty NURBS surface intersections are available as residual-checked continuation reports; B-rep branch topology is not certified",
+                ))
+            }
         }
         (Surface::BSurface(_), _) | (_, Surface::BSurface(_)) => Err(Error::unimplemented(
             "NURBS intersection is not implemented",
