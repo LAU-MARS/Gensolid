@@ -53,6 +53,12 @@ let native_nurbs = curve.nurbs()?;
 
 ## Browser Wasm release
 
+For new SMLib browser releases, use the [single-Wasm build](smlib-single-wasm.md).
+It links Rust and C++ into one module with a shared memory. The dual-module route
+below remains available for existing wasm-bindgen consumers and comparison.
+
+### Dual-module build
+
 The **complete Rust curve/surface facade** now works on `wasm32-unknown-unknown`
 with `smlib` enabled. The deployable package has **two Wasm modules**, accompanying
 JavaScript, TypeScript declarations, notices, and a SHA-256 manifest. It is not a

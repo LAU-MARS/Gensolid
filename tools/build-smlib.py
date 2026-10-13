@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--jobs', type=int, default=min(os.cpu_count() or 1, 8))
     parser.add_argument('--wasm', action='store_true', help='Build a browser companion module with Emscripten')
     parser.add_argument('--sanitize', action='store_true', help='Enable Wasm AddressSanitizer')
+    parser.add_argument('--archive-only', action='store_true', help='Skip companion-module linking')
     args = parser.parse_args()
     if args.sanitize and not args.wasm:
         parser.error('--sanitize requires --wasm')
@@ -83,7 +84,7 @@ def main():
     staging.unlink(missing_ok=True)
     subprocess.run(['emar' if args.wasm else 'ar', 'rcs', str(staging), *map(str, objects)], check=True)
     os.replace(staging, library)
-    if args.wasm:
+    if args.wasm and not args.archive_only:
         subprocess.run([compiler, str(library), *(['-fsanitize=address', '-g'] if args.sanitize else []), '-O2', '-fexceptions', '--no-entry', '--profiling-funcs',
             '-sMODULARIZE=1', '-sEXPORT_ES6=1', '-sENVIRONMENT=web,worker,node',
             '-sALLOW_MEMORY_GROWTH=1', '-sSTACK_SIZE=8388608', '-sSTACK_OVERFLOW_CHECK=2', '-sFILESYSTEM=0', '-sDISABLE_EXCEPTION_CATCHING=0',

@@ -593,3 +593,18 @@ mod tests {
         }
     }
 }
+
+/// Single-module browser ABI; isolated from the public native C API.
+///
+/// cbindgen:ignore
+#[cfg(all(target_os = "emscripten", feature = "smlib"))]
+mod single_wasm;
+
+#[cfg(all(target_os = "emscripten", feature = "smlib-validation"))]
+extern crate self as gensolid;
+/// Shared geometry assertions compiled only into diagnostic Wasm packages.
+///
+/// cbindgen:ignore
+#[cfg(all(target_os = "emscripten", feature = "smlib-validation"))]
+#[path = "../tests/smlib.rs"]
+mod single_validation;

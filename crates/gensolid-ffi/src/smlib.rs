@@ -14,7 +14,7 @@ use std::{ffi::c_void, ptr::NonNull, rc::Rc};
 /// Pinned upstream revision used by the native build.
 pub const UPSTREAM_REVISION: &str = "c9c5979f04cea8c38213004d4f04df0dcfb40d05";
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
 #[repr(C)]
 struct RawResult {
     owner: *mut c_void,
@@ -24,7 +24,7 @@ struct RawResult {
     indices_len: usize,
     upstream_status: i64,
 }
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
 unsafe extern "C" {
     fn gs_sm_create(linear: f64, angular: f64, size: f64, session: *mut *mut c_void) -> i32;
     fn gs_sm_destroy(session: *mut c_void);
@@ -41,7 +41,7 @@ unsafe extern "C" {
     ) -> i32;
     fn gs_sm_result_free(owner: *mut c_void);
 }
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
 impl Drop for RawResult {
     fn drop(&mut self) {
         // SAFETY: owner is null or the unique response returned by gs_sm_call.
@@ -55,11 +55,11 @@ struct Inner {
 impl Drop for Inner {
     fn drop(&mut self) {
         // SAFETY: the last Rc owns the live native session; all handles are gone.
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
         unsafe {
             gs_sm_destroy(self.ptr.as_ptr())
         };
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
         browser::destroy(self.ptr.as_ptr() as usize);
     }
 }
@@ -83,7 +83,7 @@ fn native_error(code: i32, upstream: i64, operation: u32) -> Error {
     )
 }
 impl Inner {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
     fn call(&self, op: u32, ids: &[usize], values: &[f64], sizes: &[usize]) -> Result<Output> {
         if values.iter().any(|x| !x.is_finite()) {
             return Err(Error::invalid_argument("SMLib inputs must be finite"));
@@ -133,12 +133,12 @@ impl Inner {
         Ok(Output { values, indices })
     }
 }
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 #[path = "smlib_browser.rs"]
 mod browser;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 pub use browser::initialize;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 impl Inner {
     fn call(&self, op: u32, ids: &[usize], values: &[f64], sizes: &[usize]) -> Result<Output> {
         if values.iter().any(|x| !x.is_finite()) {
@@ -289,9 +289,9 @@ pub struct ProjectedCurves {
 impl Backend {
     /// Creates a session. All native entry points are serialized process-wide.
     pub fn new(precision: Precision) -> Result<Self> {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
         let ptr = browser::create(precision)? as *mut c_void;
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
         let ptr = {
             let mut ptr = std::ptr::null_mut();
             // SAFETY: ptr is a writable output; precision is validated by its constructor.

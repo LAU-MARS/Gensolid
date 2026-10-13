@@ -1,0 +1,71 @@
+<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><title>SMLib browser validation</title>
+<pre id="result">Running real Rust and C++ Wasm geometry tests…</pre>
+<script type="module">
+import load, {validateSmlib, Session, SmlibBackend} from './index.mjs';
+try {
+    let rejected = false;
+    try { new SmlibBackend(); } catch { rejected = true; }
+    if (!rejected) throw new Error('Uninitialized backend accepted');
+    const native = await load();
+    // Exercise actual C++ throw/catch paths, not only Rust input validation.
+    const slot = native._malloc(4), response = native._malloc(32);
+    let rawSession = 0;
+    try {
+        if (native._gs_sm_create(-1, 1, 100, slot) !== 1 || native.HEAPU32[slot / 4] !== 0)
+            throw new Error('C++ invalid-input exception did not become an error');
+        if (native._gs_sm_create(1, 1, 100, slot) !== 0) throw new Error('C++ session recovery failed');
+        rawSession = native.HEAPU32[slot / 4];
+        if (native._gs_sm_call(rawSession, 65535, 0, 0, 0, 0, 0, 0, response) !== 7)
+            throw new Error('C++ unimplemented-operation exception did not become an error');
+        native._gs_sm_result_free(native.HEAPU32[response / 4]);
+    } finally {
+        if (rawSession) native._gs_sm_destroy(rawSession);
+        native._free(response); native._free(slot);
+    }
+    const backend = new SmlibBackend();
+    const curve = backend.circle([0,0,0], 2);
+    const surface = backend.cornerSurface([0,0,0, 1,0,0, 1,1,0, 0,1,0]);
+    backend.free();
+    // Growth invalidates Emscripten memory views: subsequent calls must use fresh ones.
+    const before = native.HEAPU8.length;
+    const allocation = native._malloc(before * 2);
+    if (!allocation || native.HEAPU8.length <= before) throw new Error('Memory growth not exercised');
+    native._free(allocation);
+    if (curve.evaluate(curve.domain()[0])[0] !== 2) throw new Error('Owned curve lost after growth');
+    if (surface.evaluate(0.5,0.5)[0] !== 0.5) throw new Error('Owned surface lost after growth');
+    curve.free(); surface.free();
+    let checks = 0;
+    for (let i = 0; i < 12; i++) checks += validateSmlib();
+    if (await load() !== native) throw new Error("Loader instantiated a second module");
+    const bytes = await (await fetch('./gensolid.wasm')).arrayBuffer();
+    const module = await WebAssembly.compile(bytes);
+    if (WebAssembly.Module.imports(module).some(item => /gs_sm|smlib-bridge/.test(item.name + item.module)))
+        throw new Error('SMLib still imported through a JS bridge');
+    const session = new Session(), body = session.bodyCreateSolidBlock(2,3,4);
+    if (session.bodyCheck(body) !== 0 || session.bodyAskVolume(body) !== 24) throw new Error('Rust modelling API regression');
+    if (session.bodyAskFaces(body).length !== 6 || session.bodyAskEdges(body).length !== 12)
+        throw new Error('Session topology query compatibility failed');
+    const vertices = session.bodyAskVertices(body);
+    if (vertices.length !== 8 || session.vertexAskPoint(vertices[0]).length !== 3)
+        throw new Error('Session vertex query compatibility failed');
+    if (session.bodyAskBoundingBox(body).length !== 6) throw new Error('Bounding box shape changed');
+    const moved = session.bodyCreateSolidBlockAt(2,3,4,[10,20,30],[0,0,1],[1,0,0]);
+    if (session.bodyCheck(moved) !== 0 || session.bodyAskVolume(moved) !== 24)
+        throw new Error('Placed-body compatibility failed');
+    let badInput = false;
+    try { session.bodyCreateSolidBlock(NaN,3,4); } catch (error) { badInput = error.code === 1; }
+    if (!badInput) throw new Error('Rust ErrorCode was not preserved');
+    session.free();
+    let stale = false;
+    try { session.bodyAskVolume(body); } catch { stale = true; }
+    if (!stale) throw new Error('Released handle was accepted');
+    const workerResult = await new Promise((resolve, reject) => {
+        const worker = new Worker('./validation-worker.mjs', {type:'module'});
+        worker.onmessage = event => { worker.terminate(); resolve(event.data); };
+        worker.onerror = event => { worker.terminate(); reject(new Error(event.message)); };
+    });
+    if (!workerResult.ok) throw new Error(workerResult.error);
+    window.__smlibValidationResult = {ok: true, checks, workerChecks:workerResult.checks, memoryBytes: native.HEAPU8.length};
+} catch (error) { window.__smlibValidationResult = {ok: false, error: String(error), stack: error.stack}; }
+document.querySelector('#result').textContent = JSON.stringify(window.__smlibValidationResult, null, 2);
+</script>

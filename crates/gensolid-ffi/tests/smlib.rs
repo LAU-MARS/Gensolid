@@ -458,71 +458,73 @@ fn lazy_analytic_geometry_can_be_edited_as_nurbs() -> Result<()> {
 
 // Runs the same deterministic assertions in the packaged browser artifact.
 #[cfg(target_arch = "wasm32")]
+pub fn run_smlib_validation() -> Result<usize> {
+    rational_roundtrip_evaluation_and_owned_lifetime()?;
+    intersections_keep_parameters_and_overlap_intervals()?;
+    surface_intersection_returns_paired_uv_curves()?;
+    copies_edits_and_surface_construction()?;
+    projection_lift_offsets_and_factories()?;
+    invalid_inputs_and_session_mismatch_return_errors()?;
+    grids_sweep_revolution_and_helix()?;
+    unequal_surface_dimensions_and_rational_curve_derivatives()?;
+    lazy_analytic_geometry_can_be_edited_as_nurbs()?;
+    // Seeded browser property samples, independent of OS entropy or subprocesses.
+    let mut seed = 42u32;
+    let mut random = || {
+        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        f64::from(seed) / f64::from(u32::MAX)
+    };
+    let p = Precision::DEFAULT;
+    for _ in 0..48 {
+        let size = 0.1 + random() * 20.;
+        let angle = random() * 6. - 3.;
+        let offset = random() * 20. - 10.;
+        let weight = 0.25 + random() * 4.;
+        let frame = Frame::from_axis(
+            point(offset, -offset, offset),
+            Vec3::new(angle.cos(), angle.sin(), 1.),
+            &p,
+        )?;
+        let control = [
+            Vec3::new(0., 0., 0.),
+            Vec3::new(0., size, 0.),
+            Vec3::new(size, 0., 0.),
+            Vec3::new(size, size, size / 3.),
+        ];
+        let source = BSurface::new(
+            1,
+            1,
+            vec![0., 0., 1., 1.],
+            vec![0., 0., 1., 1.],
+            2,
+            2,
+            control.into_iter().map(|q| frame.to_world(q)).collect(),
+            Some(vec![1., weight, 1., weight]),
+        )?;
+        let b = Backend::new(p)?;
+        let s = b.import_surface(&source)?;
+        let uv = [random(), random()];
+        let actual = s.evaluate(uv)?;
+        let expected = source.eval(uv[0], uv[1]);
+        close(actual.point, expected.point, p);
+        assert!((actual.du - expected.du).length() <= p.linear());
+        assert!((actual.dv - expected.dv).length() <= p.linear());
+        assert_eq!(s.nurbs()?.knots(), source.knots());
+        let factor = 0.01 + random() * 0.98;
+        assert!(
+            b.line_segment(
+                point(offset, 0., 0.),
+                point(offset + p.linear() * factor, 0., 0.)
+            )
+            .is_err()
+        );
+        assert!(s.evaluate([0.5, 0.5])?.point.is_finite());
+    }
+    Ok(9 + 48)
+}
+
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
 #[wasm_bindgen::prelude::wasm_bindgen(js_name = validateSmlib)]
 pub fn validate_smlib() -> std::result::Result<usize, wasm_bindgen::JsError> {
-    fn run() -> Result<usize> {
-        rational_roundtrip_evaluation_and_owned_lifetime()?;
-        intersections_keep_parameters_and_overlap_intervals()?;
-        surface_intersection_returns_paired_uv_curves()?;
-        copies_edits_and_surface_construction()?;
-        projection_lift_offsets_and_factories()?;
-        invalid_inputs_and_session_mismatch_return_errors()?;
-        grids_sweep_revolution_and_helix()?;
-        unequal_surface_dimensions_and_rational_curve_derivatives()?;
-        lazy_analytic_geometry_can_be_edited_as_nurbs()?;
-        // Seeded browser property samples, independent of OS entropy or subprocesses.
-        let mut seed = 42u32;
-        let mut random = || {
-            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
-            f64::from(seed) / f64::from(u32::MAX)
-        };
-        let p = Precision::DEFAULT;
-        for _ in 0..48 {
-            let size = 0.1 + random() * 20.;
-            let angle = random() * 6. - 3.;
-            let offset = random() * 20. - 10.;
-            let weight = 0.25 + random() * 4.;
-            let frame = Frame::from_axis(
-                point(offset, -offset, offset),
-                Vec3::new(angle.cos(), angle.sin(), 1.),
-                &p,
-            )?;
-            let control = [
-                Vec3::new(0., 0., 0.),
-                Vec3::new(0., size, 0.),
-                Vec3::new(size, 0., 0.),
-                Vec3::new(size, size, size / 3.),
-            ];
-            let source = BSurface::new(
-                1,
-                1,
-                vec![0., 0., 1., 1.],
-                vec![0., 0., 1., 1.],
-                2,
-                2,
-                control.into_iter().map(|q| frame.to_world(q)).collect(),
-                Some(vec![1., weight, 1., weight]),
-            )?;
-            let b = Backend::new(p)?;
-            let s = b.import_surface(&source)?;
-            let uv = [random(), random()];
-            let actual = s.evaluate(uv)?;
-            let expected = source.eval(uv[0], uv[1]);
-            close(actual.point, expected.point, p);
-            assert!((actual.du - expected.du).length() <= p.linear());
-            assert!((actual.dv - expected.dv).length() <= p.linear());
-            assert_eq!(s.nurbs()?.knots(), source.knots());
-            let factor = 0.01 + random() * 0.98;
-            assert!(
-                b.line_segment(
-                    point(offset, 0., 0.),
-                    point(offset + p.linear() * factor, 0., 0.)
-                )
-                .is_err()
-            );
-            assert!(s.evaluate([0.5, 0.5])?.point.is_finite());
-        }
-        Ok(9 + 48)
-    }
-    run().map_err(|error| wasm_bindgen::JsError::new(&error.to_string()))
+    run_smlib_validation().map_err(|error| wasm_bindgen::JsError::new(&error.to_string()))
 }
