@@ -2,7 +2,7 @@
 
 This branch wraps NVIDIA's [USD BRep / SMLib](https://github.com/NVIDIA-Omniverse/usd-brep)
 through a private C ABI and a safe Rust API in `gensolid::smlib`. The pinned revision is
-`c9c5979f04cea8c38213004d4f04df0dcfb40d05` (Apache-2.0). This is an optional native
+`c9c5979f04cea8c38213004d4f04df0dcfb40d05` (Apache-2.0). This is an optional C++
 geometry dependency, not a Rust translation of the upstream kernel.
 
 ## Build and run
@@ -13,9 +13,9 @@ build or link OpenUSD, Python, OCCT, the USD importers, or the OCCT bridges.
 The builder uses the standard allocator and serial execution; TBB is not needed.
 
 Requirements: Rust/Cargo, Python 3, Git, a C++17 compiler, and `ar`. The builder
-supports native macOS and Linux targets. Windows, cross-compilation and WASM
-with this feature are not supported. The existing Rust-only WASM build remains
-available.
+supports native macOS and Linux targets. Native Windows and general native
+cross-compilation are not yet implemented. Browser Wasm uses the separate package
+build below; the existing Rust-only Wasm build also remains available.
 
 ```sh
 git clone https://github.com/NVIDIA-Omniverse/usd-brep.git target/usd-brep
@@ -50,6 +50,97 @@ let native_nurbs = curve.nurbs()?;
 # Ok(())
 # }
 ```
+
+## Browser Wasm release
+
+The **complete Rust curve/surface facade** now works on `wasm32-unknown-unknown`
+with `smlib` enabled. The deployable package has **two Wasm modules**, accompanying
+JavaScript, TypeScript declarations, notices, and a SHA-256 manifest. It is not a
+single statically linked Wasm file. The same package runs in supported browsers
+on macOS, Linux and Windows; end users do not install or compile C++.
+
+This preserves the existing `wasm-bindgen` target. Rust invokes the same SMLib
+operation dispatcher through a synchronous JS transport; the entire selected C++
+core is compiled by Emscripten. No algorithm is replaced by a JS approximation.
+Inputs and results are copied between separate memories, which adds call/copy
+overhead. Batch geometry work in Rust when practical. C++ exceptions are caught
+at the C ABI, with Emscripten's JS exception runtime enabled. No WASI host,
+filesystem, pthreads, SharedArrayBuffer, or cross-origin isolation is required.
+Separate workers must initialize their own package and own sessions.
+
+Validated tool versions: Emscripten **6.0.12**, Rust **1.99.0**, and wasm-bindgen CLI
+**0.2.129**, matching Cargo.lock. Install/activate that Emscripten SDK and source
+`emsdk_env.sh` (Windows: `emsdk_env.bat`). The SDK build host must have Python 3,
+Git and Rust; build-host coverage is distinct from browser runtime portability.
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version 0.2.129 --locked
+export SMLIB_SOURCE_DIR="$PWD/target/usd-brep" # pinned checkout described above
+python3 tools/package-smlib-wasm.py --output target/smlib-web
+```
+
+`cargo build -p gensolid-wasm --target wasm32-unknown-unknown --release --features smlib`
+builds the Rust module only. Use the packaging command for a complete release;
+it compiles the companion, runs wasm-bindgen, and stages all runtime files and
+licenses. Serve the **whole output directory** over HTTP(S), including `snippets/`.
+No network/CDN request is required by the package beyond fetching its own assets.
+
+```js
+import load, { SmlibBackend } from './smlib-web/index.mjs';
+await load();
+const backend = new SmlibBackend();
+const curve = backend.circle([0, 0, 0], 2);
+backend.free(); // curve retains the session
+console.log(curve.evaluate(curve.domain()[0])); // XYZ, d1, d2
+curve.free();
+```
+
+The JS convenience classes currently expose circle/line/corner-patch construction,
+evaluation, domains and curve reversal. **All previously wrapped curve/surface
+operations are available to Rust code** through `gensolid::smlib` (also re-exported
+by `gensolid-wasm`), and can be used in application-specific wasm-bindgen exports.
+The browser regression suite exercises that full Rust facade, including
+intersections, projection, offsets and editing. This does not add solid modelling
+operations or change the existing body API.
+
+For custom Rust Wasm applications, enable the `gensolid-ffi/smlib` feature and call
+`gensolid::smlib::initialize` with the initialized companion module before making a
+`Backend`. The provided JS loader handles initialization once per JS realm.
+Replacing a companion while handles exist is rejected. Each cross-module result
+is copied before the C++ allocation is freed; JS views are reacquired after memory
+growth. wasm32 result offsets are compile-time asserted in the C++ adapter.
+
+The SMLib module reserves an **8 MiB stack** with overflow checks. Emscripten's
+small default stack was insufficient for the tested intersection paths and caused
+memory corruption; this setting is required. Linear memory grows on demand and
+remains bounded by Emscripten's wasm32 limits. Call `.free()` on exported JS handles
+when done. Releasing arenas returns allocations for reuse but does not shrink a
+Wasm memory. Large or adversarial geometry can still exceed finite memory/stack
+limits and trap; the regression cases are not an arbitrary-input memory bound.
+
+### Repeatable browser validation
+
+```sh
+python3 tools/package-smlib-wasm.py --validation --output target/smlib-web-validation
+npm install --prefix tools/wasm
+npx --prefix tools/wasm playwright install chromium firefox webkit
+node tools/wasm/test-browser.mjs target/smlib-web-validation
+BROWSER=firefox node tools/wasm/test-browser.mjs target/smlib-web-validation
+BROWSER=webkit node tools/wasm/test-browser.mjs target/smlib-web-validation
+```
+
+`BROWSER_EXECUTABLE` selects an existing compatible browser executable. Alternatively,
+serve that output directory and open `validation.html`. Production packages exclude
+the validation export/page. For C++ AddressSanitizer use `--validation --sanitize`
+and a different output directory; this diagnostic build uses substantially more
+memory and should not be shipped. The validation feature reuses nine existing
+native tests without weakening their assertions, plus 48 seeded random samples
+covering rational surfaces, frames, derivatives and near-degenerate inputs. It
+repeats the suite 12 times (684 checks), forces memory growth, tests initialization
+and live-handle replacement errors, retains handles after backend release, and
+checks the existing Rust body API. An independent module Worker runs another 57
+checks through the production loader. Native proptest tests remain enabled unchanged.
 
 ## Coverage
 
@@ -162,3 +253,18 @@ Validated on Apple Silicon macOS with Rust 1.99.0:
   midpoint. This is a smoke test, not a completeness proof.
 
 Linux is supported by the build driver but has not been executed in this session.
+
+Browser validation on this branch (same artifacts, macOS host):
+
+- Edge / Chromium 155.0.4283.45, Firefox 153.0 and WebKit 26.5: 684 main-thread
+  checks plus 57 Worker checks each, with forced memory growth, lifetime checks and explicit C++ exception recovery.
+- Edge: production-package loader and geometry smoke test; validation exports absent.
+- Edge: C++ AddressSanitizer build passes the main-thread and Worker suites without an invalid
+  memory access report. This is not a proof of absence of all upstream defects.
+- Native SMLib tests and the existing workspace tests remain passing; default and
+  feature-enabled Clippy checks pass, including the browser target.
+
+Linux/Windows operating-system browser runs and Emscripten build hosts were not
+executed here. The shipped browser files contain Wasm and JavaScript, not a
+macOS binary dependency. Native Windows library support is a separate outstanding
+item, as described above.

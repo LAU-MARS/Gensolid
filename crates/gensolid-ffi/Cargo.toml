@@ -14,7 +14,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
 default = []
-smlib = ["dep:gensolid-core", "dep:gensolid-geom", "dep:gensolid-math"]
+smlib = ["dep:gensolid-core", "dep:gensolid-geom", "dep:gensolid-math", "dep:wasm-bindgen", "dep:js-sys"]
 
 [dependencies]
 gensolid-core = { workspace = true, optional = true }
@@ -31,3 +31,7 @@ workspace = true
 [[example]]
 name = "smlib_curves_surfaces"
 required-features = ["smlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { workspace = true, optional = true }
+js-sys = { version = "0.3", optional = true }

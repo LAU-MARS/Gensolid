@@ -128,3 +128,5 @@ Rust B-rep 内核，Gensolid NURBS 实现的参考。truck 与 Gensolid 许可�
 ### 许可与商标
 
 以 [Apache License 2.0](LICENSE) 发布。Parasolid 是 Siemens Digital Industries Software 的商标。Gensolid 以 Parasolid 为能力对标对象，但与 Siemens 无隶属或背书关系。
+
+包含 SMLib 的浏览器发布包：配置锁定的源码和 Emscripten 后，运行 `python3 tools/package-smlib-wasm.py`。脚本一起打包 Rust、SMLib 两个 Wasm 模块及 JS 加载器；见 [Wasm 构建与验证](docs/smlib.md#browser-wasm-release)。

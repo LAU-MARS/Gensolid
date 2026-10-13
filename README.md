@@ -128,3 +128,5 @@ A Rust B-rep kernel, and the reference for Gensolid's NURBS implementation. truc
 ### Licence & trademarks
 
 Released under the [Apache License 2.0](LICENSE). Parasolid is a trademark of Siemens Digital Industries Software. Gensolid benchmarks itself against Parasolid's capabilities but is not affiliated with, or endorsed by, Siemens.
+
+For a browser release including SMLib, use `python3 tools/package-smlib-wasm.py` after setting up the pinned source and Emscripten. It packages both Wasm modules and their JS loader; see [Wasm build and validation](docs/smlib.md#browser-wasm-release).

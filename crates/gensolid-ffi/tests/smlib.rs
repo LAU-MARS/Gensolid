@@ -5,6 +5,7 @@ use gensolid::smlib::{Backend, Direction, Parameterization};
 use gensolid_core::{ErrorCode, Precision, Result};
 use gensolid_geom::{BCurve, BSurface};
 use gensolid_math::{Frame, Point3, Vec3};
+#[cfg(not(target_arch = "wasm32"))]
 use proptest::prelude::*;
 
 fn point(x: f64, y: f64, z: f64) -> Point3 {
@@ -34,7 +35,7 @@ fn close(a: Point3, b: Point3, p: Precision) {
     assert!(a.distance(b) <= p.linear(), "{a:?} != {b:?}");
 }
 
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn rational_roundtrip_evaluation_and_owned_lifetime() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -65,7 +66,7 @@ fn rational_roundtrip_evaluation_and_owned_lifetime() -> Result<()> {
     );
     Ok(())
 }
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn intersections_keep_parameters_and_overlap_intervals() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -108,7 +109,7 @@ fn intersections_keep_parameters_and_overlap_intervals() -> Result<()> {
     );
     Ok(())
 }
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn surface_intersection_returns_paired_uv_curves() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -145,7 +146,7 @@ fn surface_intersection_returns_paired_uv_curves() -> Result<()> {
     assert!(a.intersect(&b.import_surface(&plane(2.)?)?)?.is_empty());
     Ok(())
 }
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn copies_edits_and_surface_construction() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -216,7 +217,7 @@ fn copies_edits_and_surface_construction() -> Result<()> {
     assert_eq!(b.loft(&compatible)?.nurbs()?.counts().0, 2);
     Ok(())
 }
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn projection_lift_offsets_and_factories() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -270,7 +271,7 @@ fn projection_lift_offsets_and_factories() -> Result<()> {
     }
     Ok(())
 }
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn invalid_inputs_and_session_mismatch_return_errors() -> Result<()> {
     let p = Precision::DEFAULT;
     let a = Backend::new(p)?;
@@ -292,6 +293,7 @@ fn invalid_inputs_and_session_mismatch_return_errors() -> Result<()> {
     assert!(ca.evaluate(ca.domain()?[0])?.point.is_finite());
     Ok(())
 }
+#[cfg(not(target_arch = "wasm32"))]
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(24))]
     #[test]
@@ -312,7 +314,7 @@ proptest! {
     }
 }
 
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn grids_sweep_revolution_and_helix() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -373,6 +375,7 @@ fn grids_sweep_revolution_and_helix() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(24))]
     #[test]
@@ -384,7 +387,7 @@ proptest! {
     }
 }
 
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn unequal_surface_dimensions_and_rational_curve_derivatives() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -432,7 +435,7 @@ fn unequal_surface_dimensions_and_rational_curve_derivatives() -> Result<()> {
     Ok(())
 }
 
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn lazy_analytic_geometry_can_be_edited_as_nurbs() -> Result<()> {
     let p = Precision::DEFAULT;
     let b = Backend::new(p)?;
@@ -451,4 +454,75 @@ fn lazy_analytic_geometry_can_be_edited_as_nurbs() -> Result<()> {
     );
     assert!(!native.lines_and_arcs()?.is_empty());
     Ok(())
+}
+
+// Runs the same deterministic assertions in the packaged browser artifact.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen(js_name = validateSmlib)]
+pub fn validate_smlib() -> std::result::Result<usize, wasm_bindgen::JsError> {
+    fn run() -> Result<usize> {
+        rational_roundtrip_evaluation_and_owned_lifetime()?;
+        intersections_keep_parameters_and_overlap_intervals()?;
+        surface_intersection_returns_paired_uv_curves()?;
+        copies_edits_and_surface_construction()?;
+        projection_lift_offsets_and_factories()?;
+        invalid_inputs_and_session_mismatch_return_errors()?;
+        grids_sweep_revolution_and_helix()?;
+        unequal_surface_dimensions_and_rational_curve_derivatives()?;
+        lazy_analytic_geometry_can_be_edited_as_nurbs()?;
+        // Seeded browser property samples, independent of OS entropy or subprocesses.
+        let mut seed = 42u32;
+        let mut random = || {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            f64::from(seed) / f64::from(u32::MAX)
+        };
+        let p = Precision::DEFAULT;
+        for _ in 0..48 {
+            let size = 0.1 + random() * 20.;
+            let angle = random() * 6. - 3.;
+            let offset = random() * 20. - 10.;
+            let weight = 0.25 + random() * 4.;
+            let frame = Frame::from_axis(
+                point(offset, -offset, offset),
+                Vec3::new(angle.cos(), angle.sin(), 1.),
+                &p,
+            )?;
+            let control = [
+                Vec3::new(0., 0., 0.),
+                Vec3::new(0., size, 0.),
+                Vec3::new(size, 0., 0.),
+                Vec3::new(size, size, size / 3.),
+            ];
+            let source = BSurface::new(
+                1,
+                1,
+                vec![0., 0., 1., 1.],
+                vec![0., 0., 1., 1.],
+                2,
+                2,
+                control.into_iter().map(|q| frame.to_world(q)).collect(),
+                Some(vec![1., weight, 1., weight]),
+            )?;
+            let b = Backend::new(p)?;
+            let s = b.import_surface(&source)?;
+            let uv = [random(), random()];
+            let actual = s.evaluate(uv)?;
+            let expected = source.eval(uv[0], uv[1]);
+            close(actual.point, expected.point, p);
+            assert!((actual.du - expected.du).length() <= p.linear());
+            assert!((actual.dv - expected.dv).length() <= p.linear());
+            assert_eq!(s.nurbs()?.knots(), source.knots());
+            let factor = 0.01 + random() * 0.98;
+            assert!(
+                b.line_segment(
+                    point(offset, 0., 0.),
+                    point(offset + p.linear() * factor, 0., 0.)
+                )
+                .is_err()
+            );
+            assert!(s.evaluate([0.5, 0.5])?.point.is_finite());
+        }
+        Ok(9 + 48)
+    }
+    run().map_err(|error| wasm_bindgen::JsError::new(&error.to_string()))
 }

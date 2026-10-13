@@ -10,6 +10,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     if env::var_os("CARGO_FEATURE_SMLIB").is_none() {
         return Ok(());
     }
+    // Browser SMLib is packaged by tools/build-smlib.py --wasm as a companion module.
+    if env::var("TARGET")? == "wasm32-unknown-unknown" {
+        return Ok(());
+    }
     if env::var("HOST")? != env::var("TARGET")? {
         return Err("SMLib cross-compilation is not supported by this builder".into());
     }

@@ -16,6 +16,17 @@
 #include <stdexcept>
 #include <vector>
 
+#ifdef __EMSCRIPTEN__
+// The JS transport copies this wasm32 layout; fail compilation on ABI drift.
+static_assert(sizeof(GsSmResult) == 32);
+static_assert(offsetof(GsSmResult, values) == 4);
+static_assert(offsetof(GsSmResult, values_len) == 8);
+static_assert(offsetof(GsSmResult, indices) == 12);
+static_assert(offsetof(GsSmResult, indices_len) == 16);
+static_assert(offsetof(GsSmResult, upstream_status) == 24);
+static_assert(sizeof(size_t) == 4);
+#endif
+
 namespace {
 std::mutex gate;
 struct Failure {

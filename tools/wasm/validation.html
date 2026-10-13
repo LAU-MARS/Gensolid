@@ -1,0 +1,59 @@
+<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><title>SMLib browser validation</title>
+<pre id="result">Running real Rust and C++ Wasm geometry tests…</pre>
+<script type="module">
+import init, {initializeSmlib, validateSmlib, Session, SmlibBackend} from './gensolid.js';
+import createSmlib from './smlib.mjs';
+try {
+    await init();
+    let rejected = false;
+    try { new SmlibBackend(); } catch { rejected = true; }
+    if (!rejected) throw new Error('Uninitialized backend accepted');
+    const native = await createSmlib();
+    initializeSmlib(native);
+    // Exercise actual C++ throw/catch paths, not only Rust input validation.
+    const slot = native._malloc(4), response = native._malloc(32);
+    let rawSession = 0;
+    try {
+        if (native._gs_sm_create(-1, 1, 100, slot) !== 1 || native.HEAPU32[slot / 4] !== 0)
+            throw new Error('C++ invalid-input exception did not become an error');
+        if (native._gs_sm_create(1, 1, 100, slot) !== 0) throw new Error('C++ session recovery failed');
+        rawSession = native.HEAPU32[slot / 4];
+        if (native._gs_sm_call(rawSession, 65535, 0, 0, 0, 0, 0, 0, response) !== 7)
+            throw new Error('C++ unimplemented-operation exception did not become an error');
+        native._gs_sm_result_free(native.HEAPU32[response / 4]);
+    } finally {
+        if (rawSession) native._gs_sm_destroy(rawSession);
+        native._free(response); native._free(slot);
+    }
+    const backend = new SmlibBackend();
+    const curve = backend.circle([0,0,0], 2);
+    const surface = backend.cornerSurface([0,0,0, 1,0,0, 1,1,0, 0,1,0]);
+    rejected = false;
+    try { initializeSmlib(native); } catch { rejected = true; }
+    if (!rejected) throw new Error('Replaced module with live handles');
+    backend.free();
+    // Growth invalidates Emscripten memory views: subsequent calls must use fresh ones.
+    const before = native.HEAPU8.length;
+    const allocation = native._malloc(before * 2);
+    if (!allocation || native.HEAPU8.length <= before) throw new Error('Memory growth not exercised');
+    native._free(allocation);
+    if (curve.evaluate(curve.domain()[0])[0] !== 2) throw new Error('Owned curve lost after growth');
+    if (surface.evaluate(0.5,0.5)[0] !== 0.5) throw new Error('Owned surface lost after growth');
+    curve.free(); surface.free();
+    let checks = 0;
+    for (let i = 0; i < 12; i++) checks += validateSmlib();
+    // Reinitialization after final handle release must be permitted.
+    initializeSmlib(native);
+    const session = new Session(), body = session.bodyCreateSolidBlock(2,3,4);
+    if (session.bodyCheck(body) !== 0 || session.bodyAskVolume(body) !== 24) throw new Error('Rust modelling API regression');
+    session.free();
+    const workerResult = await new Promise((resolve, reject) => {
+        const worker = new Worker('./validation-worker.mjs', {type:'module'});
+        worker.onmessage = event => { worker.terminate(); resolve(event.data); };
+        worker.onerror = event => { worker.terminate(); reject(new Error(event.message)); };
+    });
+    if (!workerResult.ok) throw new Error(workerResult.error);
+    window.__smlibValidationResult = {ok: true, checks, workerChecks:workerResult.checks, memoryBytes: native.HEAPU8.length};
+} catch (error) { window.__smlibValidationResult = {ok: false, error: String(error), stack: error.stack}; }
+document.querySelector('#result').textContent = JSON.stringify(window.__smlibValidationResult, null, 2);
+</script>

@@ -106,3 +106,23 @@ impl Default for Session {
         Self::new()
     }
 }
+
+/// Installs the companion SMLib Wasm module before using the optional backend.
+#[cfg(all(feature = "smlib", target_arch = "wasm32"))]
+#[wasm_bindgen(js_name = initializeSmlib)]
+pub fn initialize_smlib(module: JsValue) -> Result<(), JsError> {
+    gensolid::smlib::initialize(module).map_err(to_js)
+}
+
+/// Optional curve/surface backend compiled for both native and browser callers.
+#[cfg(feature = "smlib")]
+pub use gensolid::smlib;
+
+#[cfg(all(feature = "smlib-validation", target_arch = "wasm32"))]
+#[path = "../../../crates/gensolid-ffi/tests/smlib.rs"]
+mod smlib_validation;
+
+#[cfg(feature = "smlib")]
+mod smlib_api;
+#[cfg(feature = "smlib")]
+pub use smlib_api::{SmlibBackend, SmlibCurve, SmlibSurface};
