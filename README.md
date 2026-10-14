@@ -38,7 +38,40 @@ An open-source boundary-representation (B-rep) modelling kernel benchmarked agai
 | `verifier/policy` | Repository policy tests (no literal tolerances, B-rep must not depend on mesh, `unsafe` only in FFI, etc.) |
 | `verifier/oracle` | Public block corpus compared with OCCT out of process, when pythonocc is installed |
 
-## Building
+## Installation
+
+Version **0.1.0** is available from [PyPI](https://pypi.org/project/gensolid/) and [npm](https://www.npmjs.com/package/gensolid).
+
+Python (Python 3.9+, macOS 11+ on Apple Silicon):
+
+```sh
+pip install gensolid==0.1.0
+```
+
+The initial PyPI release provides a macOS ARM64 wheel; Windows and Linux wheels are not yet available.
+
+JavaScript / WebAssembly:
+
+```sh
+npm install gensolid@0.1.0
+```
+
+Node.js:
+
+```js
+const { Session } = require("gensolid");
+const session = new Session();
+const body = session.bodyCreateSolidBlock(1, 2, 3);
+console.log(session.bodyAskVolume(body)); // 6
+console.log(session.bodyCheck(body)); // 0 faults
+session.free();
+```
+
+For browsers, import `init` and `Session` from `gensolid/web` and call `await init()` before creating a session. Configure your bundler or server to serve `gensolid/web/gensolid_bg.wasm` alongside the generated JavaScript module.
+
+Both initial packages expose block creation, topology queries, volume, bounding boxes, vertex coordinates, and body validation. They do not expose every Rust API described below or include the optional SMLib backend. No Rust toolchain is needed to install these binary packages.
+
+## Building from source
 
 Requires Rust 1.88+.
 

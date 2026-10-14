@@ -44,7 +44,40 @@
 | `verifier/policy` | 仓库规则测试（禁止字面量容差、B-rep 不得依赖网格、`unsafe` 仅限 FFI 等） |
 | `verifier/oracle` | 公开长方体语料与 OCCT 进程外对拍；安装 pythonocc 后才会真正比较 |
 
-## 构建
+## 安装
+
+**0.1.0** 已发布到 [PyPI](https://pypi.org/project/gensolid/) 和 [npm](https://www.npmjs.com/package/gensolid)，可通过两个渠道安装。
+
+Python（Python 3.9+，macOS 11+，Apple Silicon）：
+
+```sh
+pip install gensolid==0.1.0
+```
+
+首个 PyPI 版本提供 macOS ARM64 wheel，暂未提供 Windows 和 Linux wheel。
+
+JavaScript / WebAssembly：
+
+```sh
+npm install gensolid@0.1.0
+```
+
+Node.js 示例：
+
+```js
+const { Session } = require("gensolid");
+const session = new Session();
+const body = session.bodyCreateSolidBlock(1, 2, 3);
+console.log(session.bodyAskVolume(body)); // 6
+console.log(session.bodyCheck(body)); // 0 个缺陷
+session.free();
+```
+
+浏览器中从 `gensolid/web` 导入 `init` 和 `Session`，创建会话前调用 `await init()`。请配置打包工具或服务器，将 `gensolid/web/gensolid_bg.wasm` 与生成的 JavaScript 模块一同提供。
+
+两个首发包均提供长方体创建、拓扑查询、体积、包围盒、顶点坐标和实体检查，尚未开放下文介绍的全部 Rust API，也不包含可选的 SMLib 后端。安装这些二进制包不需要 Rust 工具链。
+
+## 从源码构建
 
 需要 Rust 1.88+。
 
