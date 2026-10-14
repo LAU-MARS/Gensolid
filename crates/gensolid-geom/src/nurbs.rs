@@ -218,6 +218,19 @@ impl BCurve {
         ParamRange::bounded(self.knots[self.degree], self.knots[self.points.len()])
     }
 
+    /// Reverse the geometry while retaining the numerical parameter domain.
+    pub fn reversed(&self) -> Result<Self> {
+        let r = self.range();
+        Self::new(
+            self.degree,
+            self.knots.iter().rev().map(|t| r.lo + (r.hi - t)).collect(),
+            self.points.iter().rev().copied().collect(),
+            self.weights
+                .as_ref()
+                .map(|w| w.iter().rev().copied().collect()),
+        )
+    }
+
     /// Point and first derivative at `t` (clamped to the domain).
     pub fn eval(&self, t: f64) -> CurveDerivs {
         let p = self.degree;
@@ -331,6 +344,56 @@ impl BSurface {
             ParamRange::bounded(self.u_knots[self.u_degree], self.u_knots[self.u_count]),
             ParamRange::bounded(self.v_knots[self.v_degree], self.v_knots[self.v_count]),
         )
+    }
+
+    /// Exact rational isoparametric curve. `constant_u` selects a fixed U value.
+    pub fn iso_curve(&self, constant_u: bool, parameter: f64) -> Result<BCurve> {
+        let (range, degree, count, knots) = if constant_u {
+            (self.ranges().0, self.u_degree, self.u_count, &self.u_knots)
+        } else {
+            (self.ranges().1, self.v_degree, self.v_count, &self.v_knots)
+        };
+        if !parameter.is_finite() || parameter < range.lo || parameter > range.hi {
+            return Err(Error::invalid_argument(
+                "isoparameter outside surface domain",
+            ));
+        }
+        let span = find_span(count - 1, degree, parameter, knots);
+        let basis = basis_derivatives(span, parameter, degree, 0, knots);
+        let other_count = if constant_u {
+            self.v_count
+        } else {
+            self.u_count
+        };
+        let mut points = Vec::with_capacity(other_count);
+        let mut weights = Vec::with_capacity(other_count);
+        for k in 0..other_count {
+            let mut h = [0.0; 4];
+            for (j, &basis_value) in basis[0].iter().enumerate() {
+                let i = span - degree + j;
+                let index = if constant_u {
+                    i * self.v_count + k
+                } else {
+                    k * self.v_count + i
+                };
+                let w = self.weights.as_ref().map_or(1.0, |w| w[index]) * basis_value;
+                let p = self.points[index];
+                for (a, b) in h.iter_mut().zip([p.x, p.y, p.z, 1.0]) {
+                    *a += b * w;
+                }
+            }
+            if !h[3].is_finite() || h[3] <= 0.0 {
+                return Err(Error::degenerate("invalid homogeneous isocurve weight"));
+            }
+            points.push(Point3::new(h[0] / h[3], h[1] / h[3], h[2] / h[3]));
+            weights.push(h[3]);
+        }
+        let (degree, knots) = if constant_u {
+            (self.v_degree, self.v_knots.clone())
+        } else {
+            (self.u_degree, self.u_knots.clone())
+        };
+        BCurve::new(degree, knots, points, Some(weights))
     }
 
     /// Point and first partial derivatives at `(u, v)` (clamped to the domain).

@@ -752,6 +752,25 @@ impl Surface {
             Some(w),
         )
     }
+    /// Approximate a procedural surface as NURBS with a bounded subdivision budget.
+    /// The returned deviation is an upstream diagnostic, not a certified bound.
+    pub fn approximate_nurbs(&self, subdivision_levels: usize) -> Result<(BSurface, f64)> {
+        if !(1..=8).contains(&subdivision_levels) {
+            return Err(Error::invalid_argument(
+                "surface approximation budget must be 1..=8",
+            ));
+        }
+        let output = self
+            .inner
+            .call(60, &[self.id], &[], &[subdivision_levels])?;
+        let [deviation] = fixed::<1>(&output.values)?;
+        let approximate = Surface {
+            inner: self.inner.clone(),
+            id: first(&output)?,
+        };
+        Ok((approximate.nurbs()?, deviation))
+    }
+
     /// Numerical closest-point UV solutions.
     pub fn project_point(&self, point: Point3) -> Result<Vec<Solution<2>>> {
         solutions(self.inner.call(10, &[self.id], &xyz(point), &[])?)
@@ -916,4 +935,71 @@ fn validated_insertions(original: &[f64], degree: usize, new: &[f64]) -> Result<
         }
     }
     Ok(sorted)
+}
+
+impl gensolid_geom::backend::GeometryBackend for Backend {
+    fn precision(&self) -> Precision {
+        self.precision()
+    }
+
+    fn construct_surface(
+        &self,
+        request: &gensolid_geom::backend::SurfaceConstruction,
+    ) -> Result<BSurface> {
+        use gensolid_geom::backend::SurfaceConstruction;
+        match request {
+            SurfaceConstruction::Loft(sections) => {
+                let curves = sections
+                    .iter()
+                    .map(|c| self.import_curve(c))
+                    .collect::<Result<Vec<_>>>()?;
+                let compatible = self.compatible_curves(&curves)?;
+                self.loft(&compatible)?.nurbs()
+            }
+            SurfaceConstruction::Extrude(profile, direction) => self
+                .extrude(&self.import_curve(profile)?, *direction)?
+                .nurbs(),
+            SurfaceConstruction::Sweep(profile, path) => self
+                .sweep(&self.import_curve(profile)?, &self.import_curve(path)?)?
+                .nurbs(),
+            SurfaceConstruction::Revolve {
+                profile,
+                origin,
+                axis,
+                angle,
+            } => self
+                .revolve(&self.import_curve(profile)?, *origin, *axis, *angle)?
+                .nurbs(),
+        }
+    }
+
+    fn intersect_surfaces(
+        &self,
+        first: &BSurface,
+        second: &BSurface,
+    ) -> Result<Vec<gensolid_geom::backend::SurfaceIntersectionCandidate>> {
+        self.import_surface(first)?
+            .intersect(&self.import_surface(second)?)?
+            .into_iter()
+            .map(|b| {
+                Ok(gensolid_geom::backend::SurfaceIntersectionCandidate {
+                    curve: b.curve.nurbs()?,
+                    first_uv: b.first_uv.nurbs()?,
+                    second_uv: b.second_uv.nurbs()?,
+                    reported_deviation: b.reported_deviation,
+                })
+            })
+            .collect()
+    }
+
+    fn offset_surface(&self, surface: &BSurface, distance: f64) -> Result<BSurface> {
+        let offset = self.import_surface(surface)?.offset(distance)?;
+        match offset.nurbs() {
+            Ok(surface) => Ok(surface),
+            Err(error) if error.code() == ErrorCode::WrongEntityClass => {
+                Ok(offset.approximate_nurbs(4)?.0)
+            }
+            Err(error) => Err(error),
+        }
+    }
 }

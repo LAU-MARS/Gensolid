@@ -594,6 +594,18 @@ void dispatch(Session &s, uint32_t op, const std::vector<size_t> &ids,
     add(s, out, std::move(r));
     break;
   }
+  case 60: {
+    require(n.at(0) > 0 && n[0] <= 8);
+    SmBSplineSurface *approximation = nullptr;
+    DeleteOnExit<SmBSplineSurface> guard(approximation);
+    double achieved = 0;
+    auto status = f(0)->ApproximateSurface(s.context, SmApproxTol3d(s.linear),
+                                          achieved, static_cast<ULONG>(n[0]),
+                                          approximation, TRUE);
+    result(s, out, status, approximation);
+    out.values.push_back(achieved);
+    break;
+  }
   default:
     throw Failure{7, 0};
   }

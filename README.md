@@ -77,6 +77,8 @@ Run `python tools/viewer.py` and open `http://127.0.0.1:8765`. The local viewer 
 
 New checked operations support convex off-axis revolution and corresponding convex polygon sections. Smooth lofts interpolate compatible rational curves. Arbitrary-degree NURBS curve/surface intersection provides interval root certificates; general surface/surface intersection provides numerical curves and a global possible-root cover, **without certified branch connectivity**. Preview meshes carry no chord-error guarantee. See [implementation scope and evidence](docs/advanced-modeling.md); run `python tools/benchmark-advanced.py` for the additional public probes.
 
+The [surface modelling pipeline](docs/modeling-pipeline.md) adds checked graph sheets, directional curved prisms, restricted face splits with shared-edge/UV updates, convex planar sewing and Booleans, and planar offsets and shelling. These Rust APIs do not yet form a general curved-solid Boolean/offset pipeline.
+
 ## Roadmap
 
 | Milestone | Theme | Acceptance metric |

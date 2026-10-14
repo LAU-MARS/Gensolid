@@ -55,7 +55,7 @@ pub struct SurfaceProjection {
 ///
 /// Procedural surfaces may only reference geometry that already exists, so the reference
 /// graph is acyclic by construction and evaluation always terminates.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct GeomStore {
     curves: Arena<Curve>,
     surfaces: Arena<Surface>,

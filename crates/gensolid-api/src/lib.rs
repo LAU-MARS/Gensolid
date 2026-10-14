@@ -6,6 +6,10 @@
 //! wrappers over this crate, so all of them share one set of semantics.
 
 use std::collections::HashMap;
+mod advanced;
+pub use advanced::FaceSplit;
+pub use gensolid_geom::backend::{GeometryBackend, SurfaceConstruction};
+pub use gensolid_modeling::BooleanOperation;
 
 pub use gensolid_check::FaultKind;
 use gensolid_check::{CheckOptions, check_body};
@@ -93,6 +97,7 @@ pub struct LoftSection {
 }
 
 /// A modelling session: one model plus its tag table.
+#[derive(Clone)]
 pub struct Session {
     model: Model,
     entities: Vec<EntityRef>,

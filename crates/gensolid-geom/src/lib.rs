@@ -12,6 +12,7 @@
 //! Procedural geometry refers to other geometry by id, so all geometry lives in a
 //! [`GeomStore`] and is evaluated through it.
 
+pub mod backend;
 pub mod curve;
 pub mod intersect;
 pub mod loft;

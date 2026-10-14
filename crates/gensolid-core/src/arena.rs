@@ -78,12 +78,14 @@ impl<T> fmt::Debug for Id<T> {
     }
 }
 
+#[derive(Clone)]
 struct Slot<T> {
     generation: u32,
     value: Option<T>,
 }
 
 /// Storage for values addressed by [`Id`].
+#[derive(Clone)]
 pub struct Arena<T> {
     slots: Vec<Slot<T>>,
     free: Vec<u32>,

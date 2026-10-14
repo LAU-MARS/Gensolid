@@ -34,6 +34,10 @@ workspace = true
 name = "smlib_curves_surfaces"
 required-features = ["smlib"]
 
+[[example]]
+name = "smlib_modeling"
+required-features = ["smlib"]
+
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))'.dependencies]
 wasm-bindgen = { workspace = true, optional = true }
 js-sys = { version = "0.3", optional = true }

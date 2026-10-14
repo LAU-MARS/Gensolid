@@ -87,6 +87,13 @@ pub fn split_line_edge(model: &mut Model, edge: EdgeId, fraction: f64) -> Result
         ));
     }
     let original = model.edge(edge)?.clone();
+    for &fin in &original.fins {
+        if model.fin_geometry(fin)?.is_some() {
+            return Err(Error::unimplemented(
+                "line subdivision with explicit pcurves requires the trimmed-face editor",
+            ));
+        }
+    }
     let (line, start, end) = carrier(model, edge)?;
     let range = edge_parameter_bounds(model, edge)?;
     let precision = *model.precision();

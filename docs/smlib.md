@@ -184,10 +184,12 @@ singular cases may return an upstream error. Consumers must not infer a valid
 B-rep from a successful SMLib status alone.
 
 Rectangular trimming changes the surface parameter domain. It is not arbitrary
-loop trimming and does not create a Gensolid face. No new modelling operation is
-registered in `Session`, so this feature does not bypass `check_body`. Integrating
-these curves into Gensolid topology remains a separate modelling task, subject
-to the existing verifier and property-test requirements.
+loop trimming and does not itself create a Gensolid face. The separate checked
+modelling layer now consumes this backend through borrowed `GeometryBackend`
+calls in `Session`, constructing graph sheets and directional prisms, validating
+restricted bounded face cuts, and certifying planar sheet offsets. See the
+[modelling pipeline support matrix](modeling-pipeline.md) and run the
+`smlib_modeling` example. General curved Booleans and shelling remain unsupported.
 
 ## Ownership, errors and concurrency
 

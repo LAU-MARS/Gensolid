@@ -1,6 +1,21 @@
 //! Checked B-rep modelling and mass properties. This crate never depends on meshes.
 
+mod boundary;
+mod cut;
+mod edit;
 mod mass;
+mod patch;
+mod planar;
+pub use cut::{FaceSplit, body_split_face_by_sheet};
+pub use edit::{
+    body_create_solid_surface_prism, body_extract_sheets, body_sew_sheets,
+    body_split_face_isoparametric,
+};
+pub use patch::{body_create_sheet_backend, body_create_sheet_surface, body_offset_sheet_backend};
+pub use planar::{
+    BooleanOperation, body_boolean, body_boolean_cells, body_hollow_planar, body_offset_planar,
+    body_shell_planar,
+};
 
 pub use gensolid_topo::EdgeSplit;
 pub use mass::{MassProperties, body_ask_mass_properties};
