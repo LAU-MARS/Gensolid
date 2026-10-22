@@ -10,6 +10,7 @@ mod geometry;
 mod parse;
 mod report;
 mod rsi_void_export_orientation_tests;
+mod rsi_void_export_tolerance_tests;
 mod voids;
 
 pub use report::{StepStatus, StepValidityReport, validity_report};
@@ -17,7 +18,7 @@ pub use report::{StepStatus, StepValidityReport, validity_report};
 use std::collections::{HashMap, HashSet};
 
 use gensolid_core::{Error, Precision, Result};
-use gensolid_geom::{Curve, Line, Surface};
+use gensolid_geom::{Curve, Line, Plane, Surface};
 use gensolid_math::{Frame, Point3, Vec3};
 use gensolid_topo::{
     Body, BodyId, BodyKind, Edge, Face, Fin, Loop, Model, Region, Sense, Shell, Vertex, make_block,
@@ -27,6 +28,8 @@ use parse::{Instance, Value, bool_of, name_skipped, nums, parse_document, ref_of
 /// Writes `body` as an AP203 file. Faces must be planes and edges must be lines, with one
 /// loop and no holes. Finite voids require connected convex planar shells with certified
 /// strict containment and separation; curved or unproven relationships are refused.
+/// Void geometry must also pass checks at the default local precision: this writer
+/// does not encode local vertex/edge tolerance balls or tubes in the STEP file.
 pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
     let boundaries = if model.body(body)?.regions.len() == 2 {
         None
@@ -294,7 +297,65 @@ fn planar_void_export_shells(model: &Model, body: BodyId) -> Result<Vec<gensolid
         }
     }
     voids::validate(model, body)?;
+    planar_void_export_precision(model, body)?;
     Ok(boundaries.clone())
+}
+
+/// Check the carriers actually emitted by the writer, independently of the input's
+/// tolerance balls/tubes. Lines are rebuilt through endpoints; planes are retained.
+/// Merely clearing input tolerances would check the old curves instead and could
+/// reject geometry whose emitted lines are valid, or miss new off-plane lines.
+fn planar_void_export_precision(model: &Model, body: BodyId) -> Result<()> {
+    let precision = model.precision();
+    let mut emitted = model.clone();
+    for vertex in model.body_vertices(body)? {
+        emitted.raw().vertex_mut(vertex)?.tolerance = None;
+    }
+    for edge_id in model.body_edges(body)? {
+        let edge = model.edge(edge_id)?;
+        let (Some(start), Some(end)) = (edge.start, edge.end) else {
+            return Err(Error::unsupported(
+                "STEP export requires every edge to have two vertices",
+            ));
+        };
+        let a = model.vertex(start)?.point;
+        let b = model.vertex(end)?.point;
+        let line = Line::through(a, b, precision)?;
+        // STEP VECTOR carries a direction and a magnitude. Reconstruct that
+        // carrier, including normalization, from the values being serialized.
+        let line = Line::new(a, line.direction() * (b - a).length(), precision)?;
+        let curve = emitted.raw().geom_mut().add_curve(Curve::Line(line))?;
+        let mut raw = emitted.raw();
+        let edge = raw.edge_mut(edge_id)?;
+        edge.curve = Some(curve);
+        edge.tolerance = None;
+    }
+    for face_id in model.body_faces(body)? {
+        let surface = model.face(face_id)?.surface.ok_or_else(|| {
+            Error::unsupported("STEP export requires every face to have a surface")
+        })?;
+        let Surface::Plane(plane) = model.geom().surface(surface)? else {
+            return Err(Error::unsupported(
+                "STEP export currently writes planar faces only",
+            ));
+        };
+        // AXIS2_PLACEMENT_3D defines an orthonormal basis from its two directions.
+        let frame = plane.frame();
+        let placement = Frame::new(frame.origin(), frame.z(), frame.x(), precision)?;
+        let surface = emitted
+            .raw()
+            .geom_mut()
+            .add_surface(Surface::Plane(Plane::new(placement)))?;
+        emitted.raw().face_mut(face_id)?.surface = Some(surface);
+    }
+    let report =
+        gensolid_check::check_body(&emitted, body, &gensolid_check::CheckOptions::default())?;
+    if !report.faults.is_empty() || report.unchecked != 0 {
+        return Err(Error::unimplemented(
+            "STEP void export geometry requires local tolerances that are not represented in the output",
+        ));
+    }
+    voids::validate(&emitted, body)
 }
 
 #[derive(Default)]
