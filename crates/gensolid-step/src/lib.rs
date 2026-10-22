@@ -9,6 +9,7 @@
 mod geometry;
 mod parse;
 mod report;
+mod rsi_void_export_orientation_tests;
 mod voids;
 
 pub use report::{StepStatus, StepValidityReport, validity_report};
@@ -32,6 +33,15 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
     } else {
         Some(planar_void_export_shells(model, body)?)
     };
+    // Model cavity faces point out of material, into the cavity. An ordinary
+    // STEP CLOSED_SHELL must instead point out of its enclosed finite region
+    // (ISO 10303-42 closed_shell IP10), before its oriented void use reverses it.
+    let mut cavity_faces = HashSet::new();
+    if let Some(boundaries) = &boundaries {
+        for boundary in boundaries.iter().skip(1) {
+            cavity_faces.extend(model.shell(*boundary)?.faces.iter().copied());
+        }
+    }
     let precision = *model.precision();
     let mut writer = Writer::default();
     let mut points = HashMap::new();
@@ -86,6 +96,7 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
     let mut face_steps = HashMap::new();
     for face_id in model.body_faces(body)? {
         let face = model.face(face_id)?;
+        let reverse = cavity_faces.contains(&face_id);
         if face.loops.len() != 1 {
             return Err(Error::unsupported(
                 "STEP export currently writes faces with exactly one loop",
@@ -101,12 +112,20 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
         };
         let loop_id = face.loops[0];
         let mut oriented = Vec::new();
-        for fin_id in &model.loop_(loop_id)?.fins {
-            let fin = model.fin(*fin_id)?;
+        let fins = &model.loop_(loop_id)?.fins;
+        for offset in 0..fins.len() {
+            // Reversing the face also reverses the cycle and each co-edge;
+            // changing just the face sense would leave its bound inconsistent.
+            let index = if reverse {
+                fins.len() - 1 - offset
+            } else {
+                offset
+            };
+            let fin = model.fin(fins[index])?;
             let edge_step = edges
                 .get(&fin.edge)
                 .ok_or_else(|| Error::internal("missing edge"))?;
-            let flag = if fin.sense == Sense::Positive {
+            let flag = if (fin.sense == Sense::Positive) != reverse {
                 ".T."
             } else {
                 ".F."
@@ -122,7 +141,7 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
         let bound = writer.entity(format!("FACE_OUTER_BOUND('',#{edge_loop},.T.)"));
         let placement = writer.placement(plane.frame());
         let plane_id = writer.entity(format!("PLANE('',#{placement})"));
-        let sense = if face.sense == Sense::Positive {
+        let sense = if (face.sense == Sense::Positive) != reverse {
             ".T."
         } else {
             ".F."
@@ -153,9 +172,9 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
             .ok_or_else(|| Error::internal("missing certified outer shell"))?;
         let mut cavities = Vec::new();
         for shell in shells.iter().skip(1) {
-            // The stored face normals already point out of material and into the
-            // cavity. Preserve both face senses and loop traversal with a true use.
-            let oriented = writer.entity(format!("ORIENTED_CLOSED_SHELL('',*,#{shell},.T.)"));
+            // The base shell is outward from the finite cavity. A false use
+            // makes its effective normals point into the void (brep_with_voids).
+            let oriented = writer.entity(format!("ORIENTED_CLOSED_SHELL('',*,#{shell},.F.)"));
             cavities.push(format!("#{oriented}"));
         }
         writer.entity(format!(
