@@ -3,21 +3,17 @@
 //! The reader preserves numeric file coordinates as model units and checks every imported
 //! body. Planar convex solids with finite voids also require certified containment
 //! and separation. Assemblies and unsupported classes are refused explicitly. The
-//! AP203 writer emits single-shell planar solids with straight edges and no face holes.
+//! AP203 writer emits planar solids with straight edges and no face holes, including
+//! finite voids whose convex containment and separation can be certified.
 
 mod geometry;
 mod parse;
 mod report;
 mod voids;
 
-#[cfg(test)]
-mod regressions;
-#[cfg(test)]
-mod void_tests;
-
 pub use report::{StepStatus, StepValidityReport, validity_report};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use gensolid_core::{Error, Precision, Result};
 use gensolid_geom::{Curve, Line, Surface};
@@ -28,13 +24,14 @@ use gensolid_topo::{
 use parse::{Instance, Value, bool_of, name_skipped, nums, parse_document, ref_of, refs};
 
 /// Writes `body` as an AP203 file. Faces must be planes and edges must be lines, with one
-/// loop and no holes.
+/// loop and no holes. Finite voids require connected convex planar shells with certified
+/// strict containment and separation; curved or unproven relationships are refused.
 pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
-    if model.body(body)?.regions.len() != 2 {
-        return Err(Error::unimplemented(
-            "STEP export of solids with finite void regions is not implemented",
-        ));
-    }
+    let boundaries = if model.body(body)?.regions.len() == 2 {
+        None
+    } else {
+        Some(planar_void_export_shells(model, body)?)
+    };
     let precision = *model.precision();
     let mut writer = Writer::default();
     let mut points = HashMap::new();
@@ -86,6 +83,7 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
         edges.insert(edge_id, edge_step);
     }
     let mut face_ids = Vec::new();
+    let mut face_steps = HashMap::new();
     for face_id in model.body_faces(body)? {
         let face = model.face(face_id)?;
         if face.loops.len() != 1 {
@@ -129,7 +127,42 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
         } else {
             ".F."
         };
-        face_ids.push(writer.entity(format!("ADVANCED_FACE('',(#{bound}),#{plane_id},{sense})")));
+        let step = writer.entity(format!("ADVANCED_FACE('',(#{bound}),#{plane_id},{sense})"));
+        face_ids.push(step);
+        face_steps.insert(face_id, step);
+    }
+    if let Some(boundaries) = boundaries {
+        let mut shells = Vec::new();
+        for boundary in boundaries {
+            let faces = model
+                .shell(boundary)?
+                .faces
+                .iter()
+                .map(|face| {
+                    face_steps
+                        .get(face)
+                        .map(|id| format!("#{id}"))
+                        .ok_or_else(|| Error::internal("missing STEP boundary face"))
+                })
+                .collect::<Result<Vec<_>>>()?
+                .join(",");
+            shells.push(writer.entity(format!("CLOSED_SHELL('',({faces}))")));
+        }
+        let outer = shells
+            .first()
+            .ok_or_else(|| Error::internal("missing certified outer shell"))?;
+        let mut cavities = Vec::new();
+        for shell in shells.iter().skip(1) {
+            // The stored face normals already point out of material and into the
+            // cavity. Preserve both face senses and loop traversal with a true use.
+            let oriented = writer.entity(format!("ORIENTED_CLOSED_SHELL('',*,#{shell},.T.)"));
+            cavities.push(format!("#{oriented}"));
+        }
+        writer.entity(format!(
+            "BREP_WITH_VOIDS('',#{outer},({}))",
+            cavities.join(",")
+        ));
+        return Ok(writer.finish());
     }
     let faces = face_ids
         .iter()
@@ -139,6 +172,110 @@ pub fn write_planar_solid(model: &Model, body: BodyId) -> Result<String> {
     let shell = writer.entity(format!("CLOSED_SHELL('',({faces}))"));
     writer.entity(format!("MANIFOLD_SOLID_BREP('',#{shell})"));
     Ok(writer.finish())
+}
+
+/// Establish the region/shell pairing required by the existing void certifier.
+/// The checker validates carriers and backpointers, but does not require distinct
+/// boundary components or account for every side of every material face.
+fn planar_void_export_shells(model: &Model, body: BodyId) -> Result<Vec<gensolid_topo::ShellId>> {
+    let value = model.body(body)?;
+    if value.kind != BodyKind::Solid || value.regions.len() < 3 {
+        return Err(Error::unimplemented(
+            "STEP void export needs one solid with finite empty regions",
+        ));
+    }
+    let report = gensolid_check::check_body(model, body, &gensolid_check::CheckOptions::default())?;
+    if !report.faults.is_empty() {
+        return Err(Error::invalid_argument(format!(
+            "STEP export body failed check_body: {:?}",
+            report.faults
+        )));
+    }
+    if report.unchecked != 0 {
+        return Err(Error::unimplemented(
+            "STEP void export requires complete geometric checks",
+        ));
+    }
+    let mut material = None;
+    let mut regions = HashSet::new();
+    for id in &value.regions {
+        if !regions.insert(*id) {
+            return Err(Error::invalid_argument("STEP body repeats a region"));
+        }
+        if model.region(*id)?.solid && material.replace(*id).is_some() {
+            return Err(Error::unimplemented(
+                "STEP void export needs one connected material region",
+            ));
+        }
+    }
+    let material =
+        material.ok_or_else(|| Error::invalid_argument("STEP void body has no material region"))?;
+    let boundaries = &model.region(material)?.shells;
+    if boundaries.len() != value.regions.len() - 1 {
+        return Err(Error::invalid_argument("STEP void boundary count mismatch"));
+    }
+    let mut seen_shells = HashSet::new();
+    let mut seen_faces = HashSet::new();
+    let mut empty_regions = HashSet::new();
+    for (index, boundary) in boundaries.iter().enumerate() {
+        let shell = model.shell(*boundary)?;
+        if !seen_shells.insert(*boundary)
+            || shell.faces.is_empty()
+            || !shell.wire_edges.is_empty()
+            || !shell.acorn_vertices.is_empty()
+        {
+            return Err(Error::invalid_argument("invalid STEP material boundary"));
+        }
+        let mut front_shell = None;
+        for face in &shell.faces {
+            let face = model.face(*face)?;
+            if face.back != Some(*boundary) {
+                return Err(Error::unimplemented(
+                    "STEP void export needs face normals pointing out of material",
+                ));
+            }
+            let front = face
+                .front
+                .ok_or_else(|| Error::invalid_argument("STEP void face has no empty side"))?;
+            if front_shell
+                .replace(front)
+                .is_some_and(|previous| previous != front)
+            {
+                return Err(Error::invalid_argument(
+                    "STEP boundary has mixed empty sides",
+                ));
+            }
+        }
+        let front = front_shell.ok_or_else(|| Error::internal("empty STEP boundary"))?;
+        let empty_shell = model.shell(front)?;
+        let empty = model.region(empty_shell.region)?;
+        if !seen_shells.insert(front)
+            || !regions.contains(&empty_shell.region)
+            || empty.solid
+            || !empty_regions.insert(empty_shell.region)
+            || (empty_shell.region == value.regions[0]) != (index == 0)
+            || empty.shells.as_slice() != [front]
+            || !empty_shell.wire_edges.is_empty()
+            || !empty_shell.acorn_vertices.is_empty()
+        {
+            return Err(Error::invalid_argument(
+                "invalid STEP empty boundary pairing",
+            ));
+        }
+        let faces: HashSet<_> = shell.faces.iter().copied().collect();
+        let front_faces: HashSet<_> = empty_shell.faces.iter().copied().collect();
+        if faces.len() != shell.faces.len()
+            || front_faces.len() != empty_shell.faces.len()
+            || faces != front_faces
+            || faces.iter().any(|face| !seen_faces.insert(*face))
+        {
+            return Err(Error::invalid_argument(
+                "invalid STEP boundary face membership",
+            ));
+        }
+    }
+    voids::validate(model, body)?;
+    Ok(boundaries.clone())
 }
 
 #[derive(Default)]
@@ -879,3 +1016,8 @@ mod tests {
         assert_eq!(volume, 24.0);
     }
 }
+
+#[cfg(test)]
+mod regressions;
+#[cfg(test)]
+mod void_tests;
