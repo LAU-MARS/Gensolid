@@ -10,11 +10,6 @@ mod parse;
 mod report;
 mod voids;
 
-#[cfg(test)]
-mod regressions;
-#[cfg(test)]
-mod void_tests;
-
 pub use report::{StepStatus, StepValidityReport, validity_report};
 
 use std::collections::HashMap;
@@ -879,3 +874,8 @@ mod tests {
         assert_eq!(volume, 24.0);
     }
 }
+
+#[cfg(test)]
+mod regressions;
+#[cfg(test)]
+mod void_tests;

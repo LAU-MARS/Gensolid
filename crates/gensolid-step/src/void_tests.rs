@@ -7,6 +7,9 @@ use proptest::prelude::*;
 
 use crate::{StepStatus, read_solids, validity_report, write_block_step};
 
+#[path = "../examples/support/void_export_assertions.rs"]
+mod export_contract;
+
 fn records(source: &str) -> &str {
     let start = source.find("DATA;\n").unwrap() + "DATA;\n".len();
     let end = source.rfind("ENDSEC;").unwrap();
@@ -112,13 +115,23 @@ fn independent_occt_void_export_preserves_regions_and_volume() {
             <= precision.linear() * 264.0
     );
     assert_eq!(validity_report(text, precision).status, StepStatus::Valid);
-    assert_eq!(
-        crate::write_planar_solid(&model, body)
-            .err()
-            .unwrap()
-            .code(),
-        ErrorCode::Unimplemented
-    );
+    // A maintainer-owned capability transition: lack of support stays explicit;
+    // successful export must preserve the independently specified finite cavity.
+    // The frozen executable probe separately requires success to award capability.
+    match crate::write_planar_solid(&model, body) {
+        Err(error) => assert_eq!(error.code(), ErrorCode::Unimplemented),
+        Ok(text) => {
+            let report = validity_report(&text, precision);
+            assert_eq!(report.status, StepStatus::Valid);
+            assert_eq!(report.decoded_bodies, 1);
+            assert_eq!(report.checked_bodies, 1);
+            assert_eq!(report.faults, 0);
+            assert_eq!(report.unchecked, 0);
+            let output = read_solids(&text, precision).unwrap();
+            let body = output.bodies().next().unwrap();
+            export_contract::certify(&output, body, &export_contract::occt_boxes()).unwrap();
+        }
+    }
 }
 
 #[test]
