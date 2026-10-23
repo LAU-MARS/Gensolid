@@ -135,12 +135,39 @@ impl Session {
         tool: Tag,
         backend: Option<&dyn GeometryBackend>,
     ) -> Result<FaceSplit> {
+        self.body_split_face_by_sheet_with_options(
+            body,
+            face,
+            tool,
+            backend,
+            gensolid_modeling::SheetCutOptions::default(),
+        )
+    }
+    /// Explicitly enable certified complete rational Bezier extrusion cuts.
+    /// Positive weights, one profile span, an affine planar tool patch and strict
+    /// transversality are required;
+    /// partial, tangent, trimmed or unsupported carriers are refused. Provider
+    /// curves never replace independent kernel checks, and failure publishes no tags.
+    pub fn body_split_face_by_sheet_with_options(
+        &mut self,
+        body: Tag,
+        face: Tag,
+        tool: Tag,
+        backend: Option<&dyn GeometryBackend>,
+        options: gensolid_modeling::SheetCutOptions,
+    ) -> Result<FaceSplit> {
         self.staged(|s| {
             let b = s.body_id(body)?;
             let f = s.face_id(face)?;
             let tool = s.face_id(tool)?;
-            let out =
-                gensolid_modeling::body_split_face_by_sheet(&mut s.model, b, f, tool, backend)?;
+            let out = gensolid_modeling::body_split_face_by_sheet_with_options(
+                &mut s.model,
+                b,
+                f,
+                tool,
+                backend,
+                options,
+            )?;
             s.ensure_tag_capacity(4)?;
             Ok(FaceSplit {
                 body: s.tag(EntityRef::Body(out.body))?,
