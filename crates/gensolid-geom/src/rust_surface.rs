@@ -44,6 +44,9 @@ impl GeometryBackend for RustGeometryBackend {
             SurfaceConstruction::Sweep(profile, path) => {
                 sweep_linear(profile, path, &self.precision)
             }
+            SurfaceConstruction::TranslationSweep { profile, path } => {
+                crate::translation_sweep::sweep_translation(profile, path, &self.precision)
+            }
             SurfaceConstruction::Revolve {
                 profile,
                 origin,

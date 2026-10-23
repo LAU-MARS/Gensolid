@@ -27,6 +27,7 @@ pub mod rust_surface;
 pub mod rust_surface_intersection;
 pub mod store;
 pub mod surface;
+pub mod translation_sweep;
 
 pub use curve::{Circle, Curve, CurveDerivs, Ellipse, Line};
 pub use intersect::{

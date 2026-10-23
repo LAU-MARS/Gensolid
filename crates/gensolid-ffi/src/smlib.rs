@@ -962,6 +962,15 @@ impl gensolid_geom::backend::GeometryBackend for Backend {
             SurfaceConstruction::Sweep(profile, path) => self
                 .sweep(&self.import_curve(profile)?, &self.import_curve(path)?)?
                 .nurbs(),
+            SurfaceConstruction::TranslationSweep { profile, path } => {
+                // The explicit fixed-orientation request uses the same exact Rust
+                // construction for both providers, not SMLib's moving-frame sweep.
+                gensolid_geom::translation_sweep::sweep_translation(
+                    profile,
+                    path,
+                    &self.precision(),
+                )
+            }
             SurfaceConstruction::Revolve {
                 profile,
                 origin,

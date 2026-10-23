@@ -14,6 +14,14 @@ pub enum SurfaceConstruction {
     Extrude(BCurve, Vec3),
     /// Sweep a profile along a path using the provider's framing convention.
     Sweep(BCurve, BCurve),
+    /// Keep profile orientation fixed: `S(u,v) = profile(u) + path(v) - path(v_min)`.
+    /// This explicit translation convention also applies to curved spatial paths.
+    TranslationSweep {
+        /// Profile, kept in its original orientation at the path start.
+        profile: BCurve,
+        /// Path supplying displacement, without rotating the profile.
+        path: BCurve,
+    },
     /// Rotate a profile about an axis through an origin, by radians.
     Revolve {
         /// Profile to revolve.
