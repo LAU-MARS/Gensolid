@@ -1,5 +1,7 @@
 # Rust 迁移第三轮：有理斜切与多段圆柱面偏置
 
+本文是第三轮历史记录。PR #5 的七项 CI 全部通过后已合入 `main`，合并提交为 `618efeb`；最新能力见[第四轮：多段有理斜切](rust-migration-round4.md)。
+
 PR #4 的 Linux、Windows、macOS、C 接口、Wasm、Python 和依赖许可七项 CI 全部成功后，通过正常合并流程合入 `main`，合并提交为 `2d7e856`。本轮三个 agent 均从该主线提交开始，分别实现两项能力和独立反例测试，Hilora 负责集成、联合示例与验收。
 
 | Agent | 分支 | 职责 |

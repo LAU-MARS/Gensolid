@@ -8,7 +8,7 @@
 
 ## SMLib 核心路径 Rust 化
 
-内置 `RustGeometryBackend` 已让受支持的曲线/曲面构造脱离 C++。第三轮通过显式 `SheetCutOptions` 新增有理斜切的独立证明与真实拓扑切分，并将圆柱面偏置扩展到连续多段曲面；与已有空间平移扫掠、有理求交一起进入 `Session` 建模验证。详见[当前能力、示例与验收](docs/rust-migration-round3.md)、[第二轮记录](docs/rust-migration-round2.md)和[首轮记录](docs/rust-migration.md)。通用移动框架扫掠、自由曲面偏置及通用曲面求交仍在后续范围，原可选 SMLib 后端继续保留。
+内置 `RustGeometryBackend` 已让受支持的曲线/曲面构造脱离 C++。第四轮新增连续多段有理斜切的显式建模入口，支持圆柱偏置后跨越内部样条接缝切分；结果保留原曲面，共享经过证明的交线及两侧参数曲线。详见[当前能力、示例与验收](docs/rust-migration-round4.md)、[第三轮记录](docs/rust-migration-round3.md)和[早期迁移记录](docs/rust-migration.md)。通用移动框架扫掠、自由曲面偏置及通用曲面求交仍在后续范围，原可选 SMLib 后端继续保留。
 
 ## 交互式几何 Viewer
 
