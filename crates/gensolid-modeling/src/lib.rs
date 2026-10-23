@@ -6,7 +6,9 @@ mod edit;
 mod mass;
 mod patch;
 mod planar;
-pub use cut::{FaceSplit, body_split_face_by_sheet};
+pub use cut::{
+    FaceSplit, SheetCutOptions, body_split_face_by_sheet, body_split_face_by_sheet_with_options,
+};
 pub use edit::{
     body_create_solid_surface_prism, body_extract_sheets, body_sew_sheets,
     body_split_face_isoparametric,
