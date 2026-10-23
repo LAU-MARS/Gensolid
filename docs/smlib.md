@@ -1,5 +1,11 @@
 # SMLib curve and surface backend
 
+> Migration update (2026-10-23): the supported core modelling paths also have a native
+> `RustGeometryBackend`, without the build/runtime requirements below. This document
+> still describes the optional original C++ backend. See [the staged Rust migration](rust-migration.md)
+> for the exact capability boundary; the full SMLib facade has not been replaced.
+
+
 This branch wraps NVIDIA's [USD BRep / SMLib](https://github.com/NVIDIA-Omniverse/usd-brep)
 through a private C ABI and a safe Rust API in `gensolid::smlib`. The pinned revision is
 `c9c5979f04cea8c38213004d4f04df0dcfb40d05` (Apache-2.0). This is an optional C++

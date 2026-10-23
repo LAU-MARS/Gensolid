@@ -6,6 +6,10 @@
 
 > 状态：**pre-alpha，已建立 M0 公开开发基准，M1 开发目录 1088/1088，M2 基础建模已启动**。一般曲面求交尚未完整实现；具体证据与范围见 [M0/M1 与 M2 起步状态](docs/m0-m1-status.md)。API 会变，不要用于生产。
 
+## SMLib 核心路径 Rust 化
+
+新增内置 `RustGeometryBackend`，让已覆盖的曲线/曲面构造、平面偏置与挤出面/平面求交脱离 C++ 进入原有内核验证流程。原可选 SMLib 后端保留供尚未迁移的能力使用。详见[迁移范围、agent 分工、复验命令和后续路线](docs/rust-migration.md)。
+
 ## 交互式几何 Viewer
 
 运行 `python tools/viewer.py`，打开 `http://127.0.0.1:8765`。可旋转/缩放、修改参数、查看检查结果并导出 JSON。五个场景直接调用 Rust 内核，无需 npm 或外部服务。

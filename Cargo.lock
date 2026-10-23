@@ -217,6 +217,7 @@ dependencies = [
  "gensolid-math",
  "gensolid-modeling",
  "gensolid-topo",
+ "proptest",
 ]
 
 [[package]]

@@ -18,10 +18,13 @@ pub mod intersect;
 pub mod loft;
 pub mod nurbs;
 pub mod nurbs_bounds;
+pub mod nurbs_curve_ops;
 pub mod nurbs_intersect;
 pub mod nurbs_surface_intersect;
 pub mod param;
 mod project;
+pub mod rust_surface;
+pub mod rust_surface_intersection;
 pub mod store;
 pub mod surface;
 

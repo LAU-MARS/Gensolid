@@ -9,6 +9,7 @@ use std::collections::HashMap;
 mod advanced;
 pub use advanced::FaceSplit;
 pub use gensolid_geom::backend::{GeometryBackend, SurfaceConstruction};
+pub use gensolid_geom::rust_surface::RustGeometryBackend;
 pub use gensolid_modeling::BooleanOperation;
 
 pub use gensolid_check::FaultKind;

@@ -14,11 +14,11 @@ gensolid-core.workspace = true
 gensolid-geom.workspace = true
 gensolid-math.workspace = true
 gensolid-topo.workspace = true
-gensolid-modeling = { path = "../gensolid-modeling" }
-gensolid-mesh = { path = "../gensolid-mesh" }
+gensolid-modeling.workspace = true
+gensolid-mesh.workspace = true
 gensolid-step.workspace = true
 gensolid-xt.workspace = true
-gensolid-oracle = { path = "../../verifier/oracle" }
+gensolid-oracle = { path = "../../verifier/oracle", version = "0.1.0" }
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "=0.10.9"

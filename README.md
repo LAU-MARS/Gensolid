@@ -6,6 +6,10 @@ An open-source boundary-representation (B-rep) modelling kernel benchmarked agai
 
 > Status: **pre-alpha, M0 public development benchmark, 1088/1088 M1 development pairs and initial M2 modelling**. General surface intersection is still incomplete. See [the current evidence and limits](docs/m0-m1-status.md). The API will change; do not use in production.
 
+## Rust migration of SMLib core paths
+
+A built-in `RustGeometryBackend` now handles the supported curve/surface construction, planar offset and extrusion/plane intersection paths without C++. The original optional SMLib facade remains for capabilities not yet migrated. See [scope, agent contributions, verification commands and the remaining work](docs/rust-migration.md).
+
 ## Design highlights
 
 - **Rust kernel**: the compiler is the first free verifier for LLM-generated code; kernel crates forbid `unsafe`, `unwrap`, and `panic`.
