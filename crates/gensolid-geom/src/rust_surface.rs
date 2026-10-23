@@ -69,7 +69,12 @@ impl GeometryBackend for RustGeometryBackend {
     }
 
     fn offset_surface(&self, surface: &BSurface, distance: f64) -> Result<BSurface> {
-        offset_planar(surface, distance, &self.precision)
+        match offset_planar(surface, distance, &self.precision) {
+            Err(error) if error.code() == gensolid_core::ErrorCode::Unimplemented => {
+                crate::cylindrical_offset::offset_cylindrical(surface, distance, &self.precision)
+            }
+            result => result,
+        }
     }
 }
 

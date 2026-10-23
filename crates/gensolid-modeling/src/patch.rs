@@ -42,6 +42,12 @@ pub(crate) fn certify_graph(s: &BSurface, p: &Precision) -> Result<()> {
             ));
         }
     }
+    // This proves the same positive-definite normalized projection Jacobian
+    // with tighter rational Bernstein bounds for a supported circular extrusion.
+    // Size/continuity guards above and the general interval fallback stay intact.
+    if gensolid_geom::cylindrical_offset::certify_cylindrical_graph(s, p).is_ok() {
+        return Ok(());
+    }
     let mut pending = Vec::new();
     for a in uk
         .windows(2)
@@ -271,10 +277,11 @@ pub(crate) fn split_surface(
     Ok((make(left)?, make(right)?))
 }
 
-/// Offset a planar NURBS sheet through an injected backend and independently bound
-/// the complete result against the exact translated source. A matching rational
-/// basis or a polynomial affine source is required; curved offsets and arbitrary
-/// provider reparameterization are refused.
+/// Offset a planar or supported cylindrical NURBS sheet through an injected backend.
+/// Independently certify the provider's complete result before creating topology.
+/// Planes allow a matching rational basis or a polynomial affine source; circular
+/// quadratic extrusions require the same rational basis and a full normal-distance
+/// certificate. Other curved offsets and arbitrary reparameterization are refused.
 pub fn body_offset_sheet_backend(
     model: &mut Model,
     body: BodyId,
@@ -321,18 +328,19 @@ pub fn body_offset_sheet_backend(
         .cross(mid.dv)
         .normalized(p.angular())
         .ok_or_else(|| Error::degenerate("singular offset normal"))?;
-    for q in source.points() {
+    let planar = source.points().iter().all(|q| {
         let delta = [
             Interval::point(q.x) - Interval::point(mid.point.x),
             Interval::point(q.y) - Interval::point(mid.point.y),
             Interval::point(q.z) - Interval::point(mid.point.z),
         ];
         let distance = dot(delta, normal);
-        if distance.lo() < -p.solver() || distance.hi() > p.solver() {
-            return Err(Error::unimplemented(
-                "normal offset certification currently requires a planar source",
-            ));
-        }
+        distance.lo() >= -p.solver() && distance.hi() <= p.solver()
+    });
+    if !planar {
+        let output = backend.offset_surface(&source, distance)?;
+        gensolid_geom::cylindrical_offset::certify_offset(&source, &output, distance, p)?;
+        return body_create_sheet_surface(model, &output);
     }
     let output = backend.offset_surface(&source, distance)?;
     let references = offset_reference(&source, &output, p)?;
