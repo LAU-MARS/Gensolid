@@ -44,6 +44,9 @@ impl GeometryBackend for RustGeometryBackend {
             SurfaceConstruction::Sweep(profile, path) => {
                 sweep_linear(profile, path, &self.precision)
             }
+            SurfaceConstruction::TranslationSweep { profile, path } => {
+                crate::translation_sweep::sweep_translation(profile, path, &self.precision)
+            }
             SurfaceConstruction::Revolve {
                 profile,
                 origin,
@@ -58,11 +61,20 @@ impl GeometryBackend for RustGeometryBackend {
         first: &BSurface,
         second: &BSurface,
     ) -> Result<Vec<SurfaceIntersectionCandidate>> {
-        crate::rust_surface_intersection::intersect_extrusion_plane(first, second, &self.precision)
+        crate::rust_surface_intersection::intersect_spline_extrusion_plane(
+            first,
+            second,
+            &self.precision,
+        )
     }
 
     fn offset_surface(&self, surface: &BSurface, distance: f64) -> Result<BSurface> {
-        offset_planar(surface, distance, &self.precision)
+        match offset_planar(surface, distance, &self.precision) {
+            Err(error) if error.code() == gensolid_core::ErrorCode::Unimplemented => {
+                crate::cylindrical_offset::offset_cylindrical(surface, distance, &self.precision)
+            }
+            result => result,
+        }
     }
 }
 
