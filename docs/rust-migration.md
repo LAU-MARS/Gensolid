@@ -1,6 +1,6 @@
 # SMLib 核心调用路径的 Rust 迁移
 
-本文记录已通过 PR #3 合入 `main` 的首轮实现，合并提交为 `a90e4a2`。下文“本轮”均指首轮；最新能力及第二轮验证见[曲面求交、曲线路径扫掠与非平面偏置](rust-migration-round2.md)。
+本文记录已通过 PR #3 合入 `main` 的首轮实现，合并提交为 `a90e4a2`。下文“本轮”均指首轮；后续记录见[第二轮](rust-migration-round2.md)和[最新第三轮](rust-migration-round3.md)。
 
 2026-10-23 开始分阶段用 Gensolid 自有 Rust 算法替代目前借助 SMLib 的核心几何服务。本轮提供无需 C++ 的 `RustGeometryBackend`，通过原有 `GeometryBackend` → `Session` → 建模检查器进入真实 B-rep 操作。默认构建不需要 `SMLIB_SOURCE_DIR`、原生 SMLib 静态库或浏览器 companion Wasm。
 

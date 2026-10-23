@@ -1,5 +1,7 @@
 # Rust 迁移第二轮：求交、曲线路径扫掠和非平面偏置
 
+本文是第二轮历史记录。PR #4 的七项 CI 全部通过后已合入 `main`，合并提交 `2d7e856`；最新能力见[第三轮：有理斜切与多段圆柱面偏置](rust-migration-round3.md)。
+
 本轮从 PR #3 的主线合并提交 `a90e4a2` 开始，按实际 `GeometryBackend → Session → check_body` 调用路径扩展 Rust 能力。三个 agent 在独立工作树并行实现，互相交叉审查，由 Hilora 集成。原检查器、容差政策、verifier 和既有测试断言保持不变。
 
 ## 分工与实际新增能力

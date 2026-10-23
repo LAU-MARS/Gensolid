@@ -1,5 +1,6 @@
 //! Bounded plane-sheet cuts of ruled NURBS faces, with independent algebraic validation.
 mod extruded;
+mod rational;
 use crate::{body_check_complete, body_split_face_isoparametric, boundary};
 use gensolid_core::{Error, Precision, Result};
 use gensolid_geom::{BSurface, Plane, Surface, backend::GeometryBackend};
@@ -15,6 +16,17 @@ pub struct FaceSplit {
     pub faces: [FaceId; 2],
     /// Shared three-dimensional intersection edge.
     pub intersection: EdgeId,
+}
+
+/// Explicit capability selection for bounded planar-sheet cuts.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SheetCutOptions {
+    /// Allow certified oblique cuts of positive-weight, single-span Bezier
+    /// translation extrusions against an affine planar tool patch. The complete
+    /// transverse branch must stay inside the tool; trimmed, partial, tangent
+    /// and multi-span branches are refused.
+    /// Defaults to false, preserving the legacy cut capability contract.
+    pub allow_rational_oblique: bool,
 }
 fn dot_delta(p: Point3, o: Point3, n: Vec3) -> Interval {
     (Interval::point(p.x) - Interval::point(o.x)) * Interval::point(n.x)
@@ -269,6 +281,29 @@ pub fn body_split_face_by_sheet(
     tool: FaceId,
     backend: Option<&dyn GeometryBackend>,
 ) -> Result<FaceSplit> {
+    body_split_face_by_sheet_with_options(
+        model,
+        body,
+        face,
+        tool,
+        backend,
+        SheetCutOptions::default(),
+    )
+}
+
+/// Cut with an explicit capability selection. Rational oblique cuts are rebuilt
+/// from the original carrier and independently certified over their full domain;
+/// provider coordinates and reported deviations never establish correctness.
+/// An empty provider result retains the legacy refusal behavior. Publication is
+/// transactional and every resulting body passes the unchanged complete checker.
+pub fn body_split_face_by_sheet_with_options(
+    model: &mut Model,
+    body: BodyId,
+    face: FaceId,
+    tool: FaceId,
+    backend: Option<&dyn GeometryBackend>,
+    options: SheetCutOptions,
+) -> Result<FaceSplit> {
     body_check_complete(model, body)?;
     let source_faces = model.body_faces(body)?;
     let position = source_faces
@@ -345,7 +380,14 @@ pub fn body_split_face_by_sheet(
     let mut crossing = None;
     if solution.is_none() && candidates.as_ref().is_none_or(|c| !c.is_empty()) {
         for linear_u in [true, false] {
-            if let Ok((curve, fractions)) = extruded::section(&s, linear_u, plane, &p) {
+            let section = extruded::section(&s, linear_u, plane, &p).or_else(|error| {
+                if options.allow_rational_oblique {
+                    rational::section(&s, &tool_surface, linear_u, plane, &p)
+                } else {
+                    Err(error)
+                }
+            });
+            if let Ok((curve, fractions)) = section {
                 inside_tool(s.points(), plane, &polygon, &p)?;
                 crossing = Some((linear_u, curve, fractions));
                 break;
