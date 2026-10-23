@@ -179,6 +179,45 @@ impl Session {
             })
         })
     }
+    /// Cut a continuous rational extrusion across its profile knot spans.
+    /// The complete crossing is independently certified against the original
+    /// carrier, which both replacement faces retain. One spatial edge is shared
+    /// by their opposite fins; internal knots retain all certified span seams.
+    /// The edge may be reparameterized span by span into a stable common domain,
+    /// so edge parameters need not equal the carrier's profile U/V; use the fin
+    /// parameter curves for that mapping. The carrier's knots and weights are
+    /// unchanged, and C0 output refinement does not permit source discontinuities.
+    /// Partial, tangent, discontinuous or already-trimmed targets are refused.
+    /// Failure leaves the source geometry, topology and session tags unchanged.
+    pub fn body_split_face_by_sheet_multispan(
+        &mut self,
+        body: Tag,
+        face: Tag,
+        tool: Tag,
+        backend: Option<&dyn GeometryBackend>,
+    ) -> Result<FaceSplit> {
+        self.staged(|s| {
+            let b = s.body_id(body)?;
+            let f = s.face_id(face)?;
+            let tool = s.face_id(tool)?;
+            let out = gensolid_modeling::body_split_face_by_sheet_multispan(
+                &mut s.model,
+                b,
+                f,
+                tool,
+                backend,
+            )?;
+            s.ensure_tag_capacity(4)?;
+            Ok(FaceSplit {
+                body: s.tag(EntityRef::Body(out.body))?,
+                faces: [
+                    s.tag(EntityRef::Face(out.faces[0]))?,
+                    s.tag(EntityRef::Face(out.faces[1]))?,
+                ],
+                intersection: s.tag(EntityRef::Edge(out.intersection))?,
+            })
+        })
+    }
     /// Convex planar Boolean with internal interfaces removed, one body per component.
     pub fn body_boolean(
         &mut self,

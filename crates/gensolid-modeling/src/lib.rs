@@ -6,8 +6,11 @@ mod edit;
 mod mass;
 mod patch;
 mod planar;
+mod ruled_graph;
+mod spline_bounds;
 pub use cut::{
-    FaceSplit, SheetCutOptions, body_split_face_by_sheet, body_split_face_by_sheet_with_options,
+    FaceSplit, SheetCutOptions, body_split_face_by_sheet, body_split_face_by_sheet_multispan,
+    body_split_face_by_sheet_with_options,
 };
 pub use edit::{
     body_create_solid_surface_prism, body_extract_sheets, body_sew_sheets,

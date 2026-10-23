@@ -48,6 +48,12 @@ pub(crate) fn certify_graph(s: &BSurface, p: &Precision) -> Result<()> {
     if gensolid_geom::cylindrical_offset::certify_cylindrical_graph(s, p).is_ok() {
         return Ok(());
     }
+    // The same normalized Jacobian inequalities, in the same global frame,
+    // can also be enclosed directly from raw rational ruled-surface spans.
+    // This avoids interval de Boor dependency at continuous repeated knots.
+    if crate::ruled_graph::certify(s, frame, p).is_ok() {
+        return Ok(());
+    }
     let mut pending = Vec::new();
     for a in uk
         .windows(2)
