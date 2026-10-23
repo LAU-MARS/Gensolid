@@ -11,6 +11,7 @@ pub use advanced::FaceSplit;
 pub use gensolid_geom::backend::{GeometryBackend, SurfaceConstruction};
 pub use gensolid_geom::rust_surface::RustGeometryBackend;
 pub use gensolid_modeling::BooleanOperation;
+pub use gensolid_modeling::SheetCutOptions;
 
 pub use gensolid_check::FaultKind;
 use gensolid_check::{CheckOptions, check_body};
