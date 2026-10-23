@@ -1,4 +1,4 @@
-//! Native Rust offsets of a single rational quadratic cylindrical patch.
+//! Native Rust offsets of continuous rational quadratic cylindrical patches.
 //!
 //! Construction proposes a changed radius. Acceptance is separate: outward-rounded
 //! Bernstein coefficients bound the actual source/output displacement, its length,
@@ -9,48 +9,30 @@ use crate::BSurface;
 use gensolid_core::{Error, Precision, Result};
 use gensolid_math::{Frame, Interval, Point3, Sign, Vec3};
 
+mod spans;
+use spans::{BezierSpan, cylinder, extract};
+
 fn unsupported(message: &str) -> Error {
     Error::unimplemented(message)
 }
 
 fn reciprocal(value: Interval) -> Result<Interval> {
-    if value.sign() != Some(Sign::Positive) && value.sign() != Some(Sign::Negative) {
+    if !value.lo().is_finite()
+        || !value.hi().is_finite()
+        || (value.sign() != Some(Sign::Positive) && value.sign() != Some(Sign::Negative))
+    {
         return Err(unsupported("offset certificate denominator contains zero"));
     }
-    Interval::new((1.0 / value.hi()).next_down(), (1.0 / value.lo()).next_up())
-        .ok_or_else(|| unsupported("offset certificate quotient is unbounded"))
+    let lo = (1.0 / value.hi()).next_down();
+    let hi = (1.0 / value.lo()).next_up();
+    if !lo.is_finite() || !hi.is_finite() {
+        return Err(unsupported("offset certificate quotient is unbounded"));
+    }
+    Interval::new(lo, hi).ok_or_else(|| unsupported("offset certificate quotient is unbounded"))
 }
 
 fn coordinates(p: Point3) -> [f64; 3] {
     [p.x, p.y, p.z]
-}
-
-fn shape(surface: &BSurface) -> Result<[f64; 3]> {
-    if surface.degrees() != (2, 1) || surface.counts() != (3, 2) {
-        return Err(unsupported(
-            "cylindrical offset requires a 3 by 2 quadratic/linear patch",
-        ));
-    }
-    let (u, v) = surface.ranges();
-    let (uk, vk) = surface.knots();
-    if uk[..3].iter().any(|k| k.to_bits() != u.lo.to_bits())
-        || uk[3..].iter().any(|k| k.to_bits() != u.hi.to_bits())
-        || vk[..2].iter().any(|k| k.to_bits() != v.lo.to_bits())
-        || vk[2..].iter().any(|k| k.to_bits() != v.hi.to_bits())
-    {
-        return Err(unsupported("cylindrical offset requires one clamped span"));
-    }
-    let weights = surface
-        .weights()
-        .ok_or_else(|| unsupported("polynomial curved offsets are not supported"))?;
-    if (0..3).any(|i| weights[2 * i].to_bits() != weights[2 * i + 1].to_bits())
-        || weights[0].to_bits() != weights[4].to_bits()
-    {
-        return Err(unsupported(
-            "cylindrical offset requires repeated arc weights along the axis",
-        ));
-    }
-    Ok([weights[0], weights[2], weights[4]])
 }
 
 struct Cylinder {
@@ -60,65 +42,9 @@ struct Cylinder {
     orientation: f64,
 }
 
-// Recognition selects the supported family and a proposal. The independent
-// polynomial certificate below, not these numerical residuals, admits output.
-fn cylinder(surface: &BSurface, p: &Precision) -> Result<Cylinder> {
-    let weights = shape(surface)?;
-    let w = weights[1] / weights[0];
-    let squared_sine = 1.0 - w * w;
-    if !w.is_finite() || w < std::f64::consts::FRAC_1_SQRT_2 || squared_sine <= p.angular() {
-        return Err(unsupported(
-            "cylindrical offset supports nondegenerate arcs of at most a quarter turn",
-        ));
-    }
-    let points = surface.points();
-    let direction = points[1] - points[0];
-    let axis = direction
-        .normalized(p.degenerate_length())
-        .ok_or_else(|| Error::degenerate("cylinder extrusion is degenerate"))?;
-    for i in 1..3 {
-        if ((points[2 * i + 1] - points[2 * i]) - direction).length() > p.solver() {
-            return Err(unsupported("surface is not a constant linear extrusion"));
-        }
-    }
-    let middle = points[0] + (points[4] - points[0]) * 0.5;
-    let center = middle - (points[2] - middle) * (w * w / squared_sine);
-    let radius = (points[0] - center).length();
-    if !radius.is_finite() || radius <= p.degenerate_length() {
-        return Err(Error::degenerate("cylinder radius is degenerate"));
-    }
-    if ((points[4] - center).length() - radius).abs() > p.solver()
-        || ((points[2] - center).length() * w - radius).abs() > p.solver()
-        || [0, 2, 4]
-            .iter()
-            .any(|&i| (points[i] - center).dot(axis).abs() > p.solver())
-    {
-        return Err(unsupported(
-            "extruded quadratic is not a perpendicular circular arc",
-        ));
-    }
-    let (u, v) = surface.ranges();
-    let mid = surface.eval(u.lo + (u.hi - u.lo) * 0.5, v.lo + (v.hi - v.lo) * 0.5);
-    let relative = mid.point - center;
-    let radial = relative - axis * relative.dot(axis);
-    let normal = mid.du.cross(mid.dv);
-    let sign = Interval::point(normal.x) * Interval::point(radial.x)
-        + Interval::point(normal.y) * Interval::point(radial.y)
-        + Interval::point(normal.z) * Interval::point(radial.z);
-    let orientation = match sign.sign() {
-        Some(Sign::Positive) => 1.0,
-        Some(Sign::Negative) => -1.0,
-        _ => return Err(Error::degenerate("cylinder orientation is unresolved")),
-    };
-    Ok(Cylinder {
-        center,
-        axis,
-        radius,
-        orientation,
-    })
-}
-
-/// Offset a single clamped circular-arc extrusion, with arc angle at most π/2.
+/// Offset a continuous, clamped, quadratic circular-arc extrusion.
+/// Internal U knots may have multiplicity one or two; V is one linear span.
+/// All spans must share one cylinder and admit the same global graph projection.
 /// The signed distance follows `du × dv`. The exact rational basis is retained.
 /// Radius collapse, orientation reversal and uncertified results are rejected.
 pub fn offset_cylindrical(source: &BSurface, distance: f64, p: &Precision) -> Result<BSurface> {
@@ -139,7 +65,7 @@ pub fn offset_cylindrical(source: &BSurface, distance: f64, p: &Precision) -> Re
         1,
         uk.to_vec(),
         vk.to_vec(),
-        3,
+        source.counts().0,
         2,
         source
             .points()
@@ -351,44 +277,12 @@ fn positive(polynomial: &Polynomial, message: &str) -> Result<()> {
     if polynomial
         .coefficients
         .iter()
-        .all(|c| c.sign() == Some(Sign::Positive))
+        .all(|c| c.lo().is_finite() && c.hi().is_finite() && c.sign() == Some(Sign::Positive))
     {
         Ok(())
     } else {
         Err(unsupported(message))
     }
-}
-
-fn weight_polynomial(surface: &BSurface) -> Result<Polynomial> {
-    let weights = surface
-        .weights()
-        .ok_or_else(|| unsupported("cylindrical offset needs rational weights"))?;
-    let maximum = weights.iter().copied().fold(0.0, f64::max);
-    let scale = reciprocal(Interval::point(maximum))?;
-    Ok(Polynomial {
-        u: 2,
-        v: 1,
-        coefficients: weights
-            .iter()
-            .map(|&w| Interval::point(w) * scale)
-            .collect(),
-    })
-}
-
-fn homogeneous(points: &[Point3], origin: Point3, w: &Polynomial) -> VectorPolynomial {
-    let origin = coordinates(origin);
-    std::array::from_fn(|k| Polynomial {
-        u: 2,
-        v: 1,
-        coefficients: points
-            .iter()
-            .enumerate()
-            .map(|(i, &point)| {
-                (Interval::point(coordinates(point)[k]) - Interval::point(origin[k]))
-                    * w.coefficients[i]
-            })
-            .collect(),
-    })
 }
 
 fn project(vector: &VectorPolynomial, direction: Vec3) -> Result<Polynomial> {
@@ -409,19 +303,36 @@ pub fn certify_cylindrical_graph(source: &BSurface, p: &Precision) -> Result<()>
     let (u, v) = source.ranges();
     let mid = source.eval((u.lo + u.hi) * 0.5, (v.lo + v.hi) * 0.5);
     let frame = Frame::new(mid.point, mid.du.cross(mid.dv), mid.du, p)?;
-    let w = weight_polynomial(source)?;
-    let h = homogeneous(source.points(), source.points()[0], &w);
-    // Bernstein differentiation is in normalized [0,1] coordinates. This is
-    // exactly the natural derivative multiplied by its positive knot span.
-    let qu = derivative_numerator(&h, &w, true)?;
-    let qv = derivative_numerator(&h, &w, false)?;
+    let width = Interval::point(u.hi) - Interval::point(u.lo);
+    for span in extract(source, None)? {
+        let factor =
+            width * reciprocal(Interval::point(span.range[1]) - Interval::point(span.range[0]))?;
+        certify_graph_span(&span, frame, factor, p)?;
+    }
+    // Positive definite symmetric Jacobians in ONE frame on every span imply
+    // strict monotonicity on the entire rectangle: integrate along any segment,
+    // crossing finitely many C0 seams. Per-span frames would not prove this.
+    Ok(())
+}
+
+fn certify_graph_span(
+    span: &BezierSpan,
+    frame: Frame,
+    u_scale: Interval,
+    p: &Precision,
+) -> Result<()> {
+    let w = &span.w;
+    // Local Bernstein derivatives use the span's [0,1]. Convert U to the
+    // whole surface's normalized parameter before the original graph test.
+    let qu = derivative_numerator(&span.h, w, true)?.map(|q| q.scaled(u_scale));
+    let qv = derivative_numerator(&span.h, w, false)?;
     let j00 = project(&qu, frame.x())?.elevated(4, 2)?;
     let j11 = project(&qv, frame.y())?.elevated(4, 2)?;
     let off = project(&qv, frame.x())?
         .elevated(4, 2)?
         .add(&project(&qu, frame.y())?.elevated(4, 2)?)?
         .scaled(Interval::point(0.5));
-    let w2 = w.mul(&w)?;
+    let w2 = w.mul(w)?;
     let linear = Interval::point(p.linear());
     positive(
         &j00.sub(&w2.scaled(linear))?,
@@ -466,36 +377,37 @@ pub fn certify_offset(
             "cylindrical offset provider changed the rational basis",
         ));
     }
-    let w = weight_polynomial(source)?;
-    let h = homogeneous(source.points(), source.points()[0], &w);
-    let out = homogeneous(output.points(), source.points()[0], &w);
-    let d: VectorPolynomial = std::array::from_fn(|k| Polynomial {
-        u: 2,
-        v: 1,
-        coefficients: source
-            .points()
-            .iter()
-            .zip(output.points())
-            .enumerate()
-            .map(|(i, (&a, &b))| {
-                (Interval::point(coordinates(b)[k]) - Interval::point(coordinates(a)[k]))
-                    * w.coefficients[i]
-            })
-            .collect(),
-    });
-    let qu = derivative_numerator(&h, &w, true)?;
-    let qv = derivative_numerator(&h, &w, false)?;
+    certify_cylindrical_graph(source, p)?;
+    for span in extract(source, Some(output))? {
+        certify_offset_span(source, &span, distance, p)?;
+    }
+    Ok(())
+}
+
+fn certify_offset_span(
+    source: &BSurface,
+    span: &BezierSpan,
+    distance: f64,
+    p: &Precision,
+) -> Result<()> {
+    let w = &span.w;
+    let d = &span.d;
+    let qu = derivative_numerator(&span.h, w, true)?;
+    let qv = derivative_numerator(&span.h, w, false)?;
     let normal = cross(&qu, &qv)?;
     let out_normal = cross(
-        &derivative_numerator(&out, &w, true)?,
-        &derivative_numerator(&out, &w, false)?,
+        &derivative_numerator(&span.out, w, true)?,
+        &derivative_numerator(&span.out, w, false)?,
     )?;
     positive(
         &dot(&normal, &out_normal)?,
         "cylindrical offset reverses or loses surface regularity",
     )?;
-    let (u, v) = source.ranges();
-    let mid = source.eval(u.lo + (u.hi - u.lo) * 0.5, v.lo + (v.hi - v.lo) * 0.5);
+    let v = source.ranges().1;
+    let mid = source.eval(
+        span.range[0] + (span.range[1] - span.range[0]) * 0.5,
+        v.lo + (v.hi - v.lo) * 0.5,
+    );
     // This evaluation only selects a direction. Its suitability over the whole
     // face is proved from original-coordinate interval coefficients below.
     let direction = mid
@@ -521,21 +433,20 @@ pub fn certify_offset(
     let weight_lower = Interval::point(w.lower());
     let absolute_distance = Interval::point(distance.abs());
     let error = if distance.abs() <= p.solver() {
-        Interval::point(norm_upper(&d)?) * reciprocal(weight_lower)? + absolute_distance
+        Interval::point(norm_upper(d)?) * reciprocal(weight_lower)? + absolute_distance
     } else {
         positive(
-            &dot(&d, &normal)?.scaled(Interval::point(distance.signum())),
+            &dot(d, &normal)?.scaled(Interval::point(distance.signum())),
             "provider displacement has an uncertified normal direction",
         )?;
-        let length_residual =
-            dot(&d, &d)?.sub(&w.mul(&w)?.scaled(Interval::point(distance).sqr()))?;
+        let length_residual = dot(d, d)?.sub(&w.mul(w)?.scaled(Interval::point(distance).sqr()))?;
         // ||D/W|-|distance|| <= |D.D-distance^2 W^2|/(Wmin^2 |distance|).
         let length_error = Interval::point(length_residual.absolute_upper())
             * reciprocal(weight_lower.sqr() * absolute_distance)?;
         // Tangent component <= (|D.Qu| |Qv| + |D.Qv| |Qu|)/(Wmin |Qu x Qv|).
-        let tangent_error = (Interval::point(dot(&d, &qu)?.absolute_upper())
+        let tangent_error = (Interval::point(dot(d, &qu)?.absolute_upper())
             * Interval::point(norm_upper(&qv)?)
-            + Interval::point(dot(&d, &qv)?.absolute_upper()) * Interval::point(norm_upper(&qu)?))
+            + Interval::point(dot(d, &qv)?.absolute_upper()) * Interval::point(norm_upper(&qu)?))
             * reciprocal(weight_lower * cross_lower)?;
         length_error + tangent_error * Interval::point(2.0)
     };
