@@ -7,6 +7,9 @@ use crate::{BCurve, BSurface, backend::SurfaceIntersectionCandidate};
 use gensolid_core::{Error, Precision, Result};
 use gensolid_math::{Interval, Point3, Sign, Vec3};
 
+mod spline;
+pub use spline::intersect_spline_extrusion_plane;
+
 fn uniform_weights(s: &BSurface) -> bool {
     s.weights()
         .is_none_or(|w| w.windows(2).all(|pair| pair[0].total_cmp(&pair[1]).is_eq()))
