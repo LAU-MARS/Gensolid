@@ -13,7 +13,7 @@ use crate::surface::SurfaceDerivs;
 
 /// Index `i` of the knot span `[U_i, U_{i+1})` containing `u`, for `n + 1` control points
 /// of degree `p`. `u` is clamped to the domain `[U_p, U_{n+1}]`.
-fn find_span(n: usize, p: usize, u: f64, knots: &[f64]) -> usize {
+pub(crate) fn find_span(n: usize, p: usize, u: f64, knots: &[f64]) -> usize {
     if u >= knots[n + 1] {
         // Last non-empty span, so the domain end evaluates like its interior.
         let mut span = n;
@@ -44,7 +44,13 @@ fn find_span(n: usize, p: usize, u: f64, knots: &[f64]) -> usize {
 
 /// Non-zero basis functions and their derivatives up to order `n` at `u` in span `span`.
 /// Row `k` holds the `k`-th derivatives of `N_{span-p..=span, p}`.
-fn basis_derivatives(span: usize, u: f64, p: usize, n: usize, knots: &[f64]) -> Vec<Vec<f64>> {
+pub(crate) fn basis_derivatives(
+    span: usize,
+    u: f64,
+    p: usize,
+    n: usize,
+    knots: &[f64],
+) -> Vec<Vec<f64>> {
     let mut ndu = vec![vec![0.0; p + 1]; p + 1];
     let mut left = vec![0.0; p + 1];
     let mut right = vec![0.0; p + 1];
