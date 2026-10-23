@@ -23,6 +23,7 @@ pub mod nurbs_intersect;
 pub mod nurbs_surface_intersect;
 pub mod param;
 mod project;
+pub mod rust_surface;
 pub mod store;
 pub mod surface;
 
