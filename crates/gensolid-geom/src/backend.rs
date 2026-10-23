@@ -1,5 +1,6 @@
 //! Owned geometry boundary for optional numerical algorithm providers.
-//! Implementations live above this crate; topology never owns foreign pointers.
+//! The native Rust provider lives in this crate; foreign providers live above it.
+//! Topology never owns foreign pointers.
 use crate::{BCurve, BSurface};
 use gensolid_core::{Precision, Result};
 use gensolid_math::{Point3, Vec3};

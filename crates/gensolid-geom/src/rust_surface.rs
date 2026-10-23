@@ -55,12 +55,10 @@ impl GeometryBackend for RustGeometryBackend {
 
     fn intersect_surfaces(
         &self,
-        _first: &BSurface,
-        _second: &BSurface,
+        first: &BSurface,
+        second: &BSurface,
     ) -> Result<Vec<SurfaceIntersectionCandidate>> {
-        Err(Error::unimplemented(
-            "Rust backend surface intersection candidates are not implemented",
-        ))
+        crate::rust_surface_intersection::intersect_extrusion_plane(first, second, &self.precision)
     }
 
     fn offset_surface(&self, surface: &BSurface, distance: f64) -> Result<BSurface> {
