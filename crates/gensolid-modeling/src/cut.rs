@@ -1,5 +1,6 @@
 //! Bounded plane-sheet cuts of ruled NURBS faces, with independent algebraic validation.
 mod extruded;
+mod multispan;
 mod rational;
 use crate::{body_check_complete, body_split_face_isoparametric, boundary};
 use gensolid_core::{Error, Precision, Result};
@@ -27,6 +28,13 @@ pub struct SheetCutOptions {
     /// and multi-span branches are refused.
     /// Defaults to false, preserving the legacy cut capability contract.
     pub allow_rational_oblique: bool,
+}
+
+#[derive(Clone, Copy)]
+enum CutCapability {
+    Legacy,
+    RationalSingleSpan,
+    RationalMultiSpan,
 }
 fn dot_delta(p: Point3, o: Point3, n: Vec3) -> Interval {
     (Interval::point(p.x) - Interval::point(o.x)) * Interval::point(n.x)
@@ -304,6 +312,49 @@ pub fn body_split_face_by_sheet_with_options(
     backend: Option<&dyn GeometryBackend>,
     options: SheetCutOptions,
 ) -> Result<FaceSplit> {
+    let capability = if options.allow_rational_oblique {
+        CutCapability::RationalSingleSpan
+    } else {
+        CutCapability::Legacy
+    };
+    split_face_by_sheet(model, body, face, tool, backend, capability)
+}
+
+/// Cut a complete continuous rational extrusion across its profile knot spans.
+/// Every span and seam is independently certified from the original surface.
+/// The replacement faces retain that carrier and share one complete spatial
+/// intersection edge, with a parameter curve for each fin. Partial, tangent,
+/// discontinuous, already-trimmed and uncertified cuts are refused transactionally.
+/// The edge may use a stable parameter domain assigned span by span; its parameter
+/// need not equal the carrier's profile U/V. Use each fin's parameter curve for
+/// that mapping. Original carrier knots and weights remain unchanged; refining
+/// the output to C0 pieces does not admit discontinuities in the source.
+/// This separate entry preserves the single-span contract of `SheetCutOptions`.
+pub fn body_split_face_by_sheet_multispan(
+    model: &mut Model,
+    body: BodyId,
+    face: FaceId,
+    tool: FaceId,
+    backend: Option<&dyn GeometryBackend>,
+) -> Result<FaceSplit> {
+    split_face_by_sheet(
+        model,
+        body,
+        face,
+        tool,
+        backend,
+        CutCapability::RationalMultiSpan,
+    )
+}
+
+fn split_face_by_sheet(
+    model: &mut Model,
+    body: BodyId,
+    face: FaceId,
+    tool: FaceId,
+    backend: Option<&dyn GeometryBackend>,
+    capability: CutCapability,
+) -> Result<FaceSplit> {
     body_check_complete(model, body)?;
     let source_faces = model.body_faces(body)?;
     let position = source_faces
@@ -380,13 +431,16 @@ pub fn body_split_face_by_sheet_with_options(
     let mut crossing = None;
     if solution.is_none() && candidates.as_ref().is_none_or(|c| !c.is_empty()) {
         for linear_u in [true, false] {
-            let section = extruded::section(&s, linear_u, plane, &p).or_else(|error| {
-                if options.allow_rational_oblique {
-                    rational::section(&s, &tool_surface, linear_u, plane, &p)
-                } else {
-                    Err(error)
-                }
-            });
+            let section =
+                extruded::section(&s, linear_u, plane, &p).or_else(|error| match capability {
+                    CutCapability::Legacy => Err(error),
+                    CutCapability::RationalSingleSpan => {
+                        rational::section(&s, &tool_surface, linear_u, plane, &p)
+                    }
+                    CutCapability::RationalMultiSpan => {
+                        multispan::section(&s, &tool_surface, linear_u, plane, &p)
+                    }
+                });
             if let Ok((curve, fractions)) = section {
                 inside_tool(s.points(), plane, &polygon, &p)?;
                 crossing = Some((linear_u, curve, fractions));
