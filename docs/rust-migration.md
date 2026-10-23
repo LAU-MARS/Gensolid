@@ -39,6 +39,22 @@ cargo check -p gensolid-api --target wasm32-unknown-unknown
 
 这些命令没有打开 `smlib` feature。原 SMLib 原生测试须在其支持的 C++ 构建环境单独执行；本轮 Windows 的纯 Rust 测试通过不能代替那套原生差分测试。Wasm 的 Rust 编译检查也不等于新能力已经发布到 npm 或完成浏览器端验收。
 
+### 本轮已取得的验证结果
+
+| 验证 | 结果 |
+|---|---|
+| 集成生产提交 `baa32a5` 的完整 `cargo test` | 255 passed，0 failed，0 ignored |
+| 仅新增测试的 `c5dc5d3` 独立 API 验证 | 7 passed，0 failed，0 ignored；含 72 个随机案例 |
+| 新曲线/曲面性质测试 | 另外覆盖 128 / 192 个随机输入 |
+| 格式与 Clippy | 全工作区生产代码通过；最终新增 API 测试全目标复验通过 |
+| 真实纯 Rust 示例 | sheet / solid 都是 0 faults，solid 为 6 faces |
+| Wasm 目标 | `gensolid-api` 在 `wasm32-unknown-unknown` 编译检查通过 |
+| 冻结范围审计 | 检查器、容差、verifier、原 SMLib 代码与测试均未修改 |
+
+以上是 255 项完整回归与 7 项新增独立测试的组合验收，共 262 项不同测试，不把未开启的原 SMLib 原生用例计入。新增性质测试共 392 个随机案例，不把它们重复计算为 392 个测试函数。
+
+独立审查实际修复了大起始角的圆弧相位问题、区间运算遗漏的舍入误差，以及大偏移 UV 域的控制点/内部求值量化问题。后者曾被外部客户端复现为报告偏差约 `5.45e-15`、实际配对残差达 `0.125`；最终同一输入明确返回 `Unimplemented`。误差检查覆盖两侧 UV，原有建模层的完整交支证明仍然保留。
+
 新代码基于 NURBS 的齐次坐标、张量积、仿射投影等数学公式和项目已有 Rust 实现原创编写，没有搬运 OCCT 源代码，也没有声称逐行翻译 SMLib。原 SMLib Apache-2.0 来源、固定 revision 和 NOTICE 继续保留在 [SMLib 接入文档](smlib.md) 中。冻结的检查器、容差政策和既有测试断言没有修改。
 
 ## 后续全 Rust 路线
