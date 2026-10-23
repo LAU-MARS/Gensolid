@@ -58,7 +58,11 @@ impl GeometryBackend for RustGeometryBackend {
         first: &BSurface,
         second: &BSurface,
     ) -> Result<Vec<SurfaceIntersectionCandidate>> {
-        crate::rust_surface_intersection::intersect_extrusion_plane(first, second, &self.precision)
+        crate::rust_surface_intersection::intersect_spline_extrusion_plane(
+            first,
+            second,
+            &self.precision,
+        )
     }
 
     fn offset_surface(&self, surface: &BSurface, distance: f64) -> Result<BSurface> {
