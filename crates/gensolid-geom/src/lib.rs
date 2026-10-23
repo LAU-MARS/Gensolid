@@ -14,6 +14,7 @@
 
 pub mod backend;
 pub mod curve;
+pub mod cylindrical_offset;
 pub mod intersect;
 pub mod loft;
 pub mod nurbs;
