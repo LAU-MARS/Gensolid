@@ -181,7 +181,8 @@ impl Session {
             s.body_tags(out)
         })
     }
-    /// Offset a planar NURBS sheet using a provider, with a full control-hull error bound.
+    /// Offset a planar or supported circular cylindrical NURBS sheet through a provider.
+    /// The complete output is independently certified before checked topology is published.
     pub fn body_offset_sheet_backend(
         &mut self,
         body: Tag,
