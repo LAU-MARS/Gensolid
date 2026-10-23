@@ -19,7 +19,7 @@ smlib = ["dep:gensolid", "dep:gensolid-core", "dep:gensolid-math", "dep:gensolid
 smlib-validation = ["smlib"]
 
 [dependencies]
-gensolid = { package = "gensolid-ffi", path = "../../crates/gensolid-ffi", features = ["smlib"], optional = true }
+gensolid = { package = "gensolid-ffi", path = "../../crates/gensolid-ffi", version = "0.1.0", features = ["smlib"], optional = true }
 gensolid-core = { workspace = true, optional = true }
 gensolid-math = { workspace = true, optional = true }
 gensolid-geom = { workspace = true, optional = true }
