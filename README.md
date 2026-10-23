@@ -8,7 +8,7 @@ An open-source boundary-representation (B-rep) modelling kernel benchmarked agai
 
 ## Rust migration of SMLib core paths
 
-A built-in `RustGeometryBackend` handles supported curve/surface construction without C++. The second migration round adds fixed-orientation sweeps along spatial NURBS paths, rational/multispan extrusion–plane intersections, and certified offsets of circular cylindrical patches. These capabilities run through the existing checked `Session` modelling operations; general moving-frame sweeps, arbitrary curved offsets and general surface intersections remain outside this scope. See [current scope and reproducible examples](docs/rust-migration-round2.md) and the [first-round record](docs/rust-migration.md). The optional SMLib facade remains available for capabilities not yet migrated.
+A built-in `RustGeometryBackend` handles supported curve/surface construction without C++. The third migration round adds independently certified rational oblique cuts through explicit `SheetCutOptions`, and extends cylindrical offsets to continuous multi-span patches. These join the existing fixed-orientation spatial sweeps and rational extrusion–plane intersections in checked `Session` modelling operations. See [current scope, examples and validation](docs/rust-migration-round3.md), the [second round](docs/rust-migration-round2.md), and the [first round](docs/rust-migration.md). General moving-frame sweeps, arbitrary freeform offsets and general surface intersections remain outside this scope; the optional SMLib facade remains available.
 
 ## Design highlights
 
