@@ -10,6 +10,8 @@ mod advanced;
 pub use advanced::FaceSplit;
 pub use gensolid_geom::backend::{GeometryBackend, SurfaceConstruction};
 pub use gensolid_geom::rust_surface::RustGeometryBackend;
+#[cfg(feature = "solidcore")]
+pub use gensolid_geom::solidcore_backend::{self as solidcore, Backend as SolidcoreBackend};
 pub use gensolid_modeling::BooleanOperation;
 pub use gensolid_modeling::SheetCutOptions;
 

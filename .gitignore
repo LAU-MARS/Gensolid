@@ -1,4 +1,5 @@
 /target
+/baseline
 **/*.rs.bk
 Cargo.lock.orig
 

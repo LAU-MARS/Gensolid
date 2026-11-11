@@ -26,6 +26,8 @@ pub mod param;
 mod project;
 pub mod rust_surface;
 pub mod rust_surface_intersection;
+#[cfg(feature = "solidcore")]
+pub mod solidcore_backend;
 pub mod store;
 pub mod surface;
 pub mod translation_sweep;

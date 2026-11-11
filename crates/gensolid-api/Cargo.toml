@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[features]
+default = []
+solidcore = ["gensolid-geom/solidcore"]
+
 [dependencies]
 gensolid-core.workspace = true
 gensolid-geom.workspace = true
@@ -17,6 +21,7 @@ gensolid-check.workspace = true
 gensolid-modeling.workspace = true
 
 [dev-dependencies]
+gensolid-geom = { workspace = true, features = ["solidcore"] }
 proptest.workspace = true
 
 [lints]

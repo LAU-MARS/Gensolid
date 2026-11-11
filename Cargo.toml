@@ -58,6 +58,7 @@ gensolid-api = { path = "crates/gensolid-api", version = "0.1.0" }
 gensolid-modeling = { path = "crates/gensolid-modeling", version = "0.1.0" }
 gensolid-mesh = { path = "crates/gensolid-mesh", version = "0.1.0" }
 robust = "1.1"
+solidcore = "=1.0.1"
 proptest = "1.12"
 pyo3 = "0.29"
 wasm-bindgen = "0.2"

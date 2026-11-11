@@ -14,7 +14,8 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
 default = []
-smlib = ["dep:gensolid-core", "dep:gensolid-geom", "dep:gensolid-math", "dep:wasm-bindgen", "dep:js-sys"]
+solidcore = ["dep:gensolid-core", "dep:gensolid-geom", "dep:gensolid-math", "gensolid-geom/solidcore", "gensolid-api/solidcore"]
+smlib = ["solidcore", "dep:wasm-bindgen"]
 
 smlib-validation = ["smlib"]
 
@@ -40,4 +41,3 @@ required-features = ["smlib"]
 
 [target.'cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))'.dependencies]
 wasm-bindgen = { workspace = true, optional = true }
-js-sys = { version = "0.3", optional = true }

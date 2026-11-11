@@ -8,9 +8,14 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[features]
+default = []
+solidcore = ["dep:solidcore"]
+
 [dependencies]
 gensolid-core.workspace = true
 gensolid-math.workspace = true
+solidcore = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest.workspace = true

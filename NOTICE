@@ -8,18 +8,19 @@ affiliated with or endorsed by Siemens.
 
 Third-party code included in this distribution
 ----------------------------------------------
-No upstream algorithm source is vendored in this source distribution. Optional
-native dependencies linked by selected builds are listed below.
+No upstream C++ algorithm source is vendored in this source distribution. Optional
+pure-Rust dependencies linked by selected builds are listed below.
 
-Optional native dependency: NVIDIA USD BRep / SMLib
-------------------------------------------------
-https://github.com/NVIDIA-Omniverse/usd-brep
-Pinned revision: c9c5979f04cea8c38213004d4f04df0dcfb40d05
-Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Optional Rust geometry dependency: solidcore (tangency-labs/solidcore)
+----------------------------------------------------------------------
+https://github.com/tangency-labs/solidcore (v1.0.1, commit 7267671f)
+Local reference baseline: https://github.com/LAU-MARS/solidcore-revo
+Copyright (c) 2026 The solidcore contributors
 Licensed under the Apache License, Version 2.0.
 
-The optional gensolid-ffi/smlib feature links the upstream SMLib core and selected
-SM_API sources. Upstream source is obtained separately, not vendored here. The
-native builder stages upstream LICENSE and THIRD_PARTY_NOTICES.md next to its
-archive; include applicable notices with distributions that enable this feature.
-The Gensolid adapter is original interface code. No OCCT code is linked.
+solidcore is a safe-Rust port (derivative work) of the SMLib and SM_API components
+of NVIDIA USD BRep:
+https://github.com/NVIDIA-Omniverse/usd-brep (v1.0.1, commit 3fd5b95 / c9c5979)
+Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Licensed under the Apache License, Version 2.0.
+No OCCT or USD/Hydra components are included or linked.
